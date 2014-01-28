@@ -25,6 +25,7 @@ public class Main extends Application {
 	private DescribeAndListController describeAndListController;
 	private PropertiesController propertiesController;
 	private EditorController editorController;
+	private LogController logController;
 	
 	private ObjectProperty<EnterpriseConnection> enterpriseConnectionProperty = new SimpleObjectProperty<>();
 	private ObjectProperty<MetadataConnection> metadataConnectionProperty = new SimpleObjectProperty<>();
@@ -64,6 +65,10 @@ public class Main extends Application {
 	
 	public EditorController getEditorController() {
 		return editorController;
+	}
+	
+	public LogController getLogController() {
+		return logController;
 	}
 	
 	public ObjectProperty<EnterpriseConnection> enterpriseConnection() {
@@ -131,6 +136,20 @@ public class Main extends Application {
 		AnchorPane.setRightAnchor(propertiesGraphRoot, 0.0);
 		leftSplitPane.getItems().add(propertiesGraphRoot);
 		
+		// BEGIN RIGHT SPLIT PANE
+		SplitPane rightSplitPane = new SplitPane();
+		rightSplitPane.setOrientation(Orientation.VERTICAL);
+		rightSplitPane.setDividerPosition(0, 0.6);
+		AnchorPane.setTopAnchor(rightSplitPane, 0.0);
+		AnchorPane.setBottomAnchor(rightSplitPane, 0.0);
+		AnchorPane.setLeftAnchor(rightSplitPane, 0.0);
+		AnchorPane.setRightAnchor(rightSplitPane, 0.0);
+		mainRightPane.getChildren().add(rightSplitPane);
+		AnchorPane editorPane = new AnchorPane();
+		AnchorPane logPane = new AnchorPane();
+		rightSplitPane.getItems().addAll(editorPane, logPane);
+		
+		
 		// BEGIN EDITOR PANE
 		editorController = new EditorController(this);
 		Node editorGraphRoot = editorController.getRoot();
@@ -138,7 +157,16 @@ public class Main extends Application {
 		AnchorPane.setBottomAnchor(editorGraphRoot, 0.0);
 		AnchorPane.setLeftAnchor(editorGraphRoot, 0.0);
 		AnchorPane.setRightAnchor(editorGraphRoot, 0.0);
-		mainRightPane.getChildren().add(editorGraphRoot);
+		editorPane.getChildren().add(editorGraphRoot);
+		
+		// BEGIN LOG PANE
+		logController = new LogController(this);
+		Node logGraphRoot = logController.getRoot();
+		AnchorPane.setTopAnchor(logGraphRoot, 0.0);
+		AnchorPane.setBottomAnchor(logGraphRoot, 0.0);
+		AnchorPane.setLeftAnchor(logGraphRoot, 0.0);
+		AnchorPane.setRightAnchor(logGraphRoot, 0.0);
+		logPane.getChildren().add(logGraphRoot);
 		
 		return scene;
 	}

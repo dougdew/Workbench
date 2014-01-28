@@ -18,15 +18,37 @@ import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
 
+import workbench.LogController.LogHandler;
+
 public class EditorController {
 	
-	public static class Document {
+	private static class ReadResult {
+		
+		private LogHandler logHandler;
+		private Metadata metadata;
+		
+		public void setLogHandler(LogHandler logHandler) {
+			this.logHandler = logHandler;
+		}
+		public LogHandler getLogHandler() {
+			return logHandler;
+		}
+		
+		public void setMetadata(Metadata metadata) {
+			this.metadata = metadata;
+		}
+		public Metadata getMetadata() {
+			return metadata;
+		}
+	}
+	
+	private static class Document {
 		
 		private String type;
 		private String fullName;
 		private Tab tab;
 		private TextArea textArea;
-		private Task<Metadata> readWorker;
+		private Task<ReadResult> readWorker;
 		
 		public String getType() {
 			return type;
@@ -56,10 +78,10 @@ public class EditorController {
 			this.textArea = textArea;
 		}
 		
-		public Task<Metadata> getReadWorker() {
+		public Task<ReadResult> getReadWorker() {
 			return readWorker;
 		}
-		public void setReadWorker(Task<Metadata> readWorker) {
+		public void setReadWorker(Task<ReadResult> readWorker) {
 			this.readWorker = readWorker;
 		}
 	}
@@ -112,15 +134,16 @@ public class EditorController {
 		tab.setContent(textArea);
 		document.setTextArea(textArea);
 		
-		Task<Metadata> readWorker = createReadWorker(type, fullName);
+		Task<ReadResult> readWorker = createReadWorker(type, fullName);
 		readWorker.setOnSucceeded(e -> {
-			Metadata readResult = readWorker.getValue();
-			if (readResult != null) {
-				textArea.appendText(readResult.getClass().getName());
+			Metadata m = readWorker.getValue().getMetadata();
+			if (m != null) {
+				textArea.appendText(m.getClass().getName());
 			}
 			else {
 				textArea.appendText("Unable to read");
 			}
+			application.getLogController().log(readWorker.getValue().getLogHandler());
 			cancelButton.setDisable(true);
 			refreshButton.setDisable(false);
 		});	
@@ -152,17 +175,18 @@ public class EditorController {
 		refreshButton.setOnAction(e -> {
 			String documentName = tabPane.getSelectionModel().getSelectedItem().getText();
 			Document document = documents.get(documentName);
-			Task<Metadata> readWorker = createReadWorker(document.getType(), document.getFullName());
+			Task<ReadResult> readWorker = createReadWorker(document.getType(), document.getFullName());
 			readWorker.setOnSucceeded(es -> {
-				Metadata readResult = readWorker.getValue();
+				Metadata m = readWorker.getValue().getMetadata();
 				TextArea textArea = document.getTextArea();
 				textArea.clear();
-				if (readResult != null) {
-					textArea.appendText(readResult.getClass().getName());
+				if (m != null) {
+					textArea.appendText(m.getClass().getName());
 				}
 				else {
 					textArea.appendText("Unable to read");
 				}
+				application.getLogController().log(readWorker.getValue().getLogHandler());
 				cancelButton.setDisable(true);
 				refreshButton.setDisable(false);
 			});	
@@ -202,21 +226,27 @@ public class EditorController {
 		}
 	}
 	
-	private Task<Metadata> createReadWorker(String type, String fullName) {
+	private Task<ReadResult> createReadWorker(String type, String fullName) {
 		
-		return new Task<Metadata>() {
+		return new Task<ReadResult>() {
 			
 			@Override
-			protected Metadata call() throws Exception {
+			protected ReadResult call() throws Exception {
 				
-				Metadata result = null;
+				ReadResult result = new ReadResult();
 				
 				try {
 					MetadataConnection conn = application.metadataConnection().get();
+					LogHandler logHandler = new LogHandler();
+					logHandler.setTitle("READ: " + fullName);
+					conn.getConfig().addMessageHandler(logHandler);
+					conn.getConfig().setPrettyPrintXml(true);
 					Metadata[] records = conn.readMetadata(type, new String[]{fullName}).getRecords();
 					if (records != null && records.length == 1) {
-						result = records[0];
+						result.setMetadata(records[0]);
 					}
+					result.setLogHandler(logHandler);
+					conn.getConfig().clearMessageHandlers();
 				}
 				catch (ConnectionException e) {
 					
