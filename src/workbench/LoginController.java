@@ -20,7 +20,45 @@ import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 
+import workbench.LogController.LogHandler;
+
 public class LoginController {
+	
+	private static class LoginWorkerResults {
+		
+		private LogHandler logHandler;
+		private boolean success;
+		private EnterpriseConnection eConnection;
+		private MetadataConnection mConnection;
+		
+		public LogHandler getLogHandler() {
+			return logHandler;
+		}
+		public void setLogHandler(LogHandler logHandler) {
+			this.logHandler = logHandler;
+		}
+		
+		public boolean isSuccess() {
+			return success;
+		}
+		public void setSuccess(boolean success) {
+			this.success = success;
+		}
+		
+		public EnterpriseConnection getEnterpriseConnection() {
+			return eConnection;
+		}
+		public void setEnterpriseConnection(EnterpriseConnection eConnection) {
+			this.eConnection = eConnection;
+		}
+		
+		public MetadataConnection getMetadataConnection() {
+			return mConnection;
+		}
+		public void setMetadataConnection(MetadataConnection mConnection) {
+			this.mConnection = mConnection;
+		}
+	}
 	
 	private static final Map<String, String> SERVERS;
 	static {
@@ -62,38 +100,11 @@ public class LoginController {
 		"8.0"
 	};
 	
-	public static class LoginResults {
-		private boolean success;
-		private EnterpriseConnection eConnection;
-		private MetadataConnection mConnection;
-		
-		public boolean isSuccess() {
-			return success;
-		}
-		public void setSuccess(boolean success) {
-			this.success = success;
-		}
-		
-		public EnterpriseConnection getEnterpriseConnection() {
-			return eConnection;
-		}
-		public void setEnterpriseConnection(EnterpriseConnection eConnection) {
-			this.eConnection = eConnection;
-		}
-		
-		public MetadataConnection getMetadataConnection() {
-			return mConnection;
-		}
-		public void setMetadataConnection(MetadataConnection mConnection) {
-			this.mConnection = mConnection;
-		}
-	}
-	
 	private Main application;
 	private HBox root;
 	private Rectangle loginStatus;
 	
-	private Task<LoginResults> loginWorker;
+	private Task<LoginWorkerResults> loginWorker;
 
 	public LoginController(Main application) {
 		this.application = application;
@@ -178,9 +189,20 @@ public class LoginController {
 				}
 				loginWorker = createLoginWorker(serverUrl, version, userName, password);
 				loginWorker.setOnSucceeded(es -> {
-					handleLoginResults(loginWorker.getValue());
-					application.apiVersion().set((new Double(version)).doubleValue());
-					loginLogoutButton.setText("Log Out");
+					LoginWorkerResults loginResults = loginWorker.getValue();
+					if (loginResults.isSuccess()) {
+						application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
+						application.metadataConnection().set(loginResults.getMetadataConnection());
+						loginStatus.setFill(Color.GREEN);
+						loginLogoutButton.setText("Log Out");
+						application.apiVersion().set((new Double(version)).doubleValue());
+					}
+					else {
+						application.enterpriseConnection().set(null);
+						application.metadataConnection().set(null);
+						loginStatus.setFill(Color.RED);
+					}
+					application.getLogController().log(loginResults.getLogHandler());
 				});
 				
 				new Thread(loginWorker).start();
@@ -210,38 +232,30 @@ public class LoginController {
 		}
 	}
 	
-	private void handleLoginResults(LoginResults results) {
+	private Task<LoginWorkerResults> createLoginWorker(String serverUrl, String apiVersion, String userName, String password) {
 		
-		if (results.isSuccess()) {
-			application.enterpriseConnection().set(results.getEnterpriseConnection());
-			application.metadataConnection().set(results.getMetadataConnection());
-			loginStatus.setFill(Color.GREEN);
-		}
-		else {
-			application.enterpriseConnection().set(null);
-			application.metadataConnection().set(null);
-			loginStatus.setFill(Color.RED);
-		}
-	}
-	
-	private Task<LoginResults> createLoginWorker(String serverUrl, String apiVersion, String userName, String password) {
-		
-		return new Task<LoginResults>() {
+		return new Task<LoginWorkerResults>() {
 			
 			@Override
-			public LoginResults call() throws Exception {
+			public LoginWorkerResults call() throws Exception {
 				
-				LoginResults results = new LoginResults();
+				LoginWorkerResults results = new LoginWorkerResults();
 				
 				try {
 					ConnectorConfig eConfig = new ConnectorConfig();
 					eConfig.setAuthEndpoint(serverUrl + apiVersion);
 					eConfig.setServiceEndpoint(serverUrl + apiVersion);
 					eConfig.setManualLogin(true);
+					LogHandler logHandler = new LogHandler();
+					logHandler.setTitle("LOGIN");
+					eConfig.addMessageHandler(logHandler);
+					results.setLogHandler(logHandler);
 					EnterpriseConnection eConnection = new EnterpriseConnection(eConfig);
 					results.setEnterpriseConnection(eConnection);
-			
+					
 					LoginResult loginResult = eConnection.login(userName, password);
+					
+					eConfig.clearMessageHandlers();
 					
 					eConnection.setSessionHeader(loginResult.getSessionId());
 					

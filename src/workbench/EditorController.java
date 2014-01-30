@@ -22,7 +22,7 @@ import workbench.LogController.LogHandler;
 
 public class EditorController {
 	
-	private static class ReadResult {
+	private static class ReadWorkerResult {
 		
 		private LogHandler logHandler;
 		private Metadata metadata;
@@ -48,7 +48,7 @@ public class EditorController {
 		private String fullName;
 		private Tab tab;
 		private TextArea textArea;
-		private Task<ReadResult> readWorker;
+		private Task<ReadWorkerResult> readWorker;
 		
 		public String getType() {
 			return type;
@@ -78,10 +78,10 @@ public class EditorController {
 			this.textArea = textArea;
 		}
 		
-		public Task<ReadResult> getReadWorker() {
+		public Task<ReadWorkerResult> getReadWorker() {
 			return readWorker;
 		}
-		public void setReadWorker(Task<ReadResult> readWorker) {
+		public void setReadWorker(Task<ReadWorkerResult> readWorker) {
 			this.readWorker = readWorker;
 		}
 	}
@@ -134,7 +134,7 @@ public class EditorController {
 		tab.setContent(textArea);
 		document.setTextArea(textArea);
 		
-		Task<ReadResult> readWorker = createReadWorker(type, fullName);
+		Task<ReadWorkerResult> readWorker = createReadWorker(type, fullName);
 		readWorker.setOnSucceeded(e -> {
 			Metadata m = readWorker.getValue().getMetadata();
 			if (m != null) {
@@ -175,7 +175,7 @@ public class EditorController {
 		refreshButton.setOnAction(e -> {
 			String documentName = tabPane.getSelectionModel().getSelectedItem().getText();
 			Document document = documents.get(documentName);
-			Task<ReadResult> readWorker = createReadWorker(document.getType(), document.getFullName());
+			Task<ReadWorkerResult> readWorker = createReadWorker(document.getType(), document.getFullName());
 			readWorker.setOnSucceeded(es -> {
 				Metadata m = readWorker.getValue().getMetadata();
 				TextArea textArea = document.getTextArea();
@@ -226,30 +226,29 @@ public class EditorController {
 		}
 	}
 	
-	private Task<ReadResult> createReadWorker(String type, String fullName) {
+	private Task<ReadWorkerResult> createReadWorker(String type, String fullName) {
 		
-		return new Task<ReadResult>() {
+		return new Task<ReadWorkerResult>() {
 			
 			@Override
-			protected ReadResult call() throws Exception {
+			protected ReadWorkerResult call() throws Exception {
 				
-				ReadResult result = new ReadResult();
+				ReadWorkerResult result = new ReadWorkerResult();
 				
 				try {
 					MetadataConnection conn = application.metadataConnection().get();
 					LogHandler logHandler = new LogHandler();
 					logHandler.setTitle("READ: " + fullName);
 					conn.getConfig().addMessageHandler(logHandler);
-					conn.getConfig().setPrettyPrintXml(true);
+					result.setLogHandler(logHandler);
 					Metadata[] records = conn.readMetadata(type, new String[]{fullName}).getRecords();
 					if (records != null && records.length == 1) {
 						result.setMetadata(records[0]);
 					}
-					result.setLogHandler(logHandler);
 					conn.getConfig().clearMessageHandlers();
 				}
 				catch (ConnectionException e) {
-					
+					e.printStackTrace();
 				}
 				
 				return result;
