@@ -518,7 +518,9 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
     </xsd:sequence>
    </xsd:complexType>
    <xsd:simpleType name="ExternalDataSourceType">
-    <xsd:restriction base="xsd:string"/>
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="Limits"/>
+    </xsd:restriction>
    </xsd:simpleType>
    <xsd:simpleType name="ExternalPrincipalType">
     <xsd:restriction base="xsd:string">
@@ -755,7 +757,7 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
        <xsd:element name="trackFeedHistory" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="trackHistory" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="trackTrending" minOccurs="0" type="xsd:boolean"/>
-       <xsd:element name="type" type="tns:FieldType"/>
+       <xsd:element name="type" minOccurs="0" type="tns:FieldType"/>
        <xsd:element name="unique" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="visibleLines" minOccurs="0" type="xsd:int"/>
        <xsd:element name="writeRequiresMasterRead" minOccurs="0" type="xsd:boolean"/>
@@ -1927,6 +1929,7 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
    <xsd:complexType name="LayoutItem">
     <xsd:sequence>
      <xsd:element name="behavior" minOccurs="0" type="tns:UiBehavior"/>
+     <xsd:element name="canvas" minOccurs="0" type="xsd:string"/>
      <xsd:element name="component" minOccurs="0" type="xsd:string"/>
      <xsd:element name="customLink" minOccurs="0" type="xsd:string"/>
      <xsd:element name="emptySpace" minOccurs="0" type="xsd:boolean"/>
@@ -2469,6 +2472,8 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
        <xsd:element name="formulas" minOccurs="0" maxOccurs="unbounded" type="tns:FlowFormula"/>
        <xsd:element name="label" type="xsd:string"/>
        <xsd:element name="loops" minOccurs="0" maxOccurs="unbounded" type="tns:FlowLoop"/>
+       <xsd:element name="processMetadataValues" minOccurs="0" type="tns:FlowMetadataValue"/>
+       <xsd:element name="processType" minOccurs="0" type="tns:FlowProcessType"/>
        <xsd:element name="recordCreates" minOccurs="0" maxOccurs="unbounded" type="tns:FlowRecordCreate"/>
        <xsd:element name="recordDeletes" minOccurs="0" maxOccurs="unbounded" type="tns:FlowRecordDelete"/>
        <xsd:element name="recordLookups" minOccurs="0" maxOccurs="unbounded" type="tns:FlowRecordLookup"/>
@@ -2703,6 +2708,19 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
      </xsd:extension>
     </xsd:complexContent>
    </xsd:complexType>
+   <xsd:complexType name="FlowMetadataValue">
+    <xsd:sequence>
+     <xsd:element name="name" type="xsd:string"/>
+     <xsd:element name="value" type="tns:FlowElementReferenceOrValue"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:simpleType name="FlowProcessType">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="Headlessflow"/>
+     <xsd:enumeration value="Visualflow"/>
+     <xsd:enumeration value="Workflow"/>
+    </xsd:restriction>
+   </xsd:simpleType>
    <xsd:complexType name="FlowRecordCreate">
     <xsd:complexContent>
      <xsd:extension base="tns:FlowNode">
@@ -2856,6 +2874,12 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
      </xsd:extension>
     </xsd:complexContent>
    </xsd:complexType>
+   <xsd:simpleType name="InvocableActionType">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="quickAction"/>
+     <xsd:enumeration value="submit"/>
+    </xsd:restriction>
+   </xsd:simpleType>
    <xsd:complexType name="Workflow">
     <xsd:complexContent>
      <xsd:extension base="tns:Metadata">
@@ -4422,6 +4446,7 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
      <xsd:element name="lockoutInterval" minOccurs="0" type="tns:LockoutInterval"/>
      <xsd:element name="maxLoginAttempts" minOccurs="0" type="tns:MaxLoginAttempts"/>
      <xsd:element name="minPasswordLength" minOccurs="0" type="tns:MinPasswordLength"/>
+     <xsd:element name="minimumPasswordLifetime" minOccurs="0" type="xsd:boolean"/>
      <xsd:element name="obscureSecretAnswer" minOccurs="0" type="xsd:boolean"/>
      <xsd:element name="passwordAssistanceMessage" minOccurs="0" type="xsd:string"/>
      <xsd:element name="passwordAssistanceURL" minOccurs="0" type="xsd:string"/>
@@ -5106,6 +5131,7 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
        <xsd:element name="enableInvitation" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="enableKnowledgeable" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="enablePrivateMessages" minOccurs="0" type="xsd:boolean"/>
+       <xsd:element name="enableReputation" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="forgotPasswordTemplate" type="xsd:string"/>
        <xsd:element name="networkMemberGroups" minOccurs="0" type="tns:NetworkMemberGroup"/>
        <xsd:element name="newSenderAddress" minOccurs="0" type="xsd:string"/>
@@ -5393,6 +5419,7 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
        <xsd:element name="enableRequestSound" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="enableSneakPeek" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="enableWhisperMessage" minOccurs="0" type="xsd:boolean"/>
+       <xsd:element name="hasAgentFileTransfer" minOccurs="0" type="xsd:boolean"/>
        <xsd:element name="label" type="xsd:string"/>
        <xsd:element name="supervisorDefaultAgentStatusFilter" minOccurs="0" type="tns:SupervisorAgentStatusFilter"/>
        <xsd:element name="supervisorDefaultButtonFilter" minOccurs="0" type="xsd:string"/>
@@ -5558,6 +5585,8 @@ Copyright 2006-2014 Salesforce.com, inc. All Rights Reserved
      <xsd:enumeration value="NoRestriction"/>
      <xsd:enumeration value="AlphaNumeric"/>
      <xsd:enumeration value="SpecialCharacters"/>
+     <xsd:enumeration value="UpperLowerCaseNumeric"/>
+     <xsd:enumeration value="UpperLowerCaseNumericSpecialCharacters"/>
     </xsd:restriction>
    </xsd:simpleType>
    <xsd:simpleType name="ConnectedAppOauthAccessScope">
