@@ -20,7 +20,7 @@ import com.sforce.ws.ConnectionException;
 
 public class EditorController {
 	
-	private static class ReadWorkerResult {
+	private static class ReadWorkerResults {
 		
 		private SOAPLogHandler logHandler;
 		private Metadata metadata;
@@ -40,13 +40,13 @@ public class EditorController {
 		}
 	}
 	
-	private static class Document {
+	private static class FileController {
 		
 		private String type;
 		private String fullName;
 		private Tab tab;
 		private TextArea textArea;
-		private Task<ReadWorkerResult> readWorker;
+		private Task<ReadWorkerResults> readWorker;
 		
 		public String getType() {
 			return type;
@@ -76,10 +76,10 @@ public class EditorController {
 			this.textArea = textArea;
 		}
 		
-		public Task<ReadWorkerResult> getReadWorker() {
+		public Task<ReadWorkerResults> getReadWorker() {
 			return readWorker;
 		}
-		public void setReadWorker(Task<ReadWorkerResult> readWorker) {
+		public void setReadWorker(Task<ReadWorkerResults> readWorker) {
 			this.readWorker = readWorker;
 		}
 	}
@@ -91,7 +91,7 @@ public class EditorController {
 	private final Button cancelButton = new Button("Cancel");
 	private final TabPane tabPane = new TabPane();
 	
-	private Map<String, Document> documents = new HashMap<String, Document>();
+	private Map<String, FileController> fileControllers = new HashMap<String, FileController>();
 	
 	public EditorController(Main application) {
 		this.application = application;
@@ -107,32 +107,32 @@ public class EditorController {
 		
 		String documentName = type + ":" + fullName;
 		
-		Document document = documents.get(documentName);
-		if(document != null) {
-			tabPane.getSelectionModel().select(document.getTab());
+		FileController fileController = fileControllers.get(documentName);
+		if(fileController != null) {
+			tabPane.getSelectionModel().select(fileController.getTab());
 			return;
 		}
 		
-		document = new Document();
-		document.setType(type);
-		document.setFullName(fullName);
+		fileController = new FileController();
+		fileController.setType(type);
+		fileController.setFullName(fullName);
 		
 		Tab tab = new Tab();
 		tab.setText(documentName);
 		tab.setOnClosed(e -> {
-			documents.remove(tab.getText());
-			if (documents.size() == 0) {
+			fileControllers.remove(tab.getText());
+			if (fileControllers.size() == 0) {
 				refreshButton.setDisable(true);
 			}
 		});
-		document.setTab(tab);
+		fileController.setTab(tab);
 		
 		final TextArea textArea = new TextArea();
 		textArea.setEditable(false);
 		tab.setContent(textArea);
-		document.setTextArea(textArea);
+		fileController.setTextArea(textArea);
 		
-		Task<ReadWorkerResult> readWorker = createReadWorker(type, fullName);
+		Task<ReadWorkerResults> readWorker = createReadWorker(type, fullName);
 		readWorker.setOnSucceeded(e -> {
 			Metadata m = readWorker.getValue().getMetadata();
 			if (m != null) {
@@ -145,9 +145,9 @@ public class EditorController {
 			cancelButton.setDisable(true);
 			refreshButton.setDisable(false);
 		});	
-		document.setReadWorker(readWorker);
+		fileController.setReadWorker(readWorker);
 		
-		documents.put(documentName, document);
+		fileControllers.put(documentName, fileController);
 		
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
@@ -172,11 +172,11 @@ public class EditorController {
 		refreshButton.setDisable(true);
 		refreshButton.setOnAction(e -> {
 			String documentName = tabPane.getSelectionModel().getSelectedItem().getText();
-			Document document = documents.get(documentName);
-			Task<ReadWorkerResult> readWorker = createReadWorker(document.getType(), document.getFullName());
+			FileController fileController = fileControllers.get(documentName);
+			Task<ReadWorkerResults> readWorker = createReadWorker(fileController.getType(), fileController.getFullName());
 			readWorker.setOnSucceeded(es -> {
 				Metadata m = readWorker.getValue().getMetadata();
-				TextArea textArea = document.getTextArea();
+				TextArea textArea = fileController.getTextArea();
 				textArea.clear();
 				if (m != null) {
 					textArea.appendText(m.getClass().getName());
@@ -188,7 +188,7 @@ public class EditorController {
 				cancelButton.setDisable(true);
 				refreshButton.setDisable(false);
 			});	
-			document.setReadWorker(readWorker);
+			fileController.setReadWorker(readWorker);
 			
 			refreshButton.setDisable(true);
 			cancelButton.setDisable(false);
@@ -201,8 +201,8 @@ public class EditorController {
 		cancelButton.setOnAction(e -> {
 			cancelButton.setDisable(true);
 			String documentName = tabPane.getSelectionModel().getSelectedItem().getText();
-			Document document = documents.get(documentName);
-			document.getReadWorker().cancel();
+			FileController fileController = fileControllers.get(documentName);
+			fileController.getReadWorker().cancel();
 			refreshButton.setDisable(false);
 		});
 		editorOperationsBar.getChildren().add(cancelButton);
@@ -224,23 +224,24 @@ public class EditorController {
 		}
 	}
 	
-	private Task<ReadWorkerResult> createReadWorker(String type, String fullName) {
+	private Task<ReadWorkerResults> createReadWorker(String type, String fullName) {
 		
-		return new Task<ReadWorkerResult>() {
+		return new Task<ReadWorkerResults>() {
 			
 			@Override
-			protected ReadWorkerResult call() throws Exception {
+			protected ReadWorkerResults call() throws Exception {
 				
-				ReadWorkerResult result = new ReadWorkerResult();
+				ReadWorkerResults results = new ReadWorkerResults();
 				
 				try {
 					MetadataConnection conn = application.metadataConnection().get();
 					SOAPLogHandler logHandler = new SOAPLogHandler("READ: " + fullName);
 					conn.getConfig().addMessageHandler(logHandler);
-					result.setLogHandler(logHandler);
+					results.setLogHandler(logHandler);
+					
 					Metadata[] records = conn.readMetadata(type, new String[]{fullName}).getRecords();
 					if (records != null && records.length == 1) {
-						result.setMetadata(records[0]);
+						results.setMetadata(records[0]);
 					}
 					conn.getConfig().clearMessageHandlers();
 				}
@@ -248,7 +249,7 @@ public class EditorController {
 					e.printStackTrace();
 				}
 				
-				return result;
+				return results;
 			}
 		};
 	}
