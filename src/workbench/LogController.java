@@ -2,7 +2,6 @@ package workbench;
 
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.net.URL;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Source;
@@ -11,51 +10,16 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
-import com.sforce.ws.MessageHandler;
-
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.AnchorPane;
 
 public class LogController {
 	
-	public static class LogHandler implements MessageHandler {
-		
-		String title;
-		String url;
-		String message;
-		
-		public void setTitle(String title) {
-			this.title = title;
-		}
-		public String getTitle() {
-			return title;
-		}
-		
-		public void setUrl(String url) {
-			this.url = url;
-		}
-		public String getUrl() {
-			return url;
-		}
-		
-		public void setMessage(String message) {
-			this.message = message;
-		}
-		public String getMessage() {
-			return message;
-		}
-
-		@Override
-		public void handleRequest(URL endpoint, byte[] request) {
-			// TODO Auto-generated method stub		
-		}
-
-		@Override
-		public void handleResponse(URL endpoint, byte[] response) {
-			url = endpoint.toString();
-			message = new String(response);
-		}
+	public interface LogMessage {
+		String getTitle();
+		String getUrl();
+		String getMessage();
 	}
 	
 	private Main application;
@@ -73,7 +37,7 @@ public class LogController {
 		return root;
 	}
 	
-	public void log(LogHandler message) {
+	public void log(LogMessage message) {
 		if (message.getTitle() != null) {
 			textArea.appendText(message.getTitle() + "\n");
 		}

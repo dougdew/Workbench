@@ -20,19 +20,17 @@ import com.sforce.soap.metadata.FileProperties;
 import com.sforce.soap.metadata.ListMetadataQuery;
 import com.sforce.ws.ConnectionException;
 
-import workbench.LogController.LogHandler;
-
 public class DescribeAndListController {
 	
 	private static class DescribeWorkerResults {
 		
-		private LogHandler logHandler;
+		private SOAPLogHandler logHandler;
 		private SortedMap<String, DescribeMetadataObject> description;
 		
-		public void setLogHandler(LogHandler logHandler) {
+		public void setLogHandler(SOAPLogHandler logHandler) {
 			this.logHandler = logHandler;
 		}
-		public LogHandler getLogHandler() {
+		public SOAPLogHandler getLogHandler() {
 			return logHandler;
 		}
 		
@@ -46,13 +44,13 @@ public class DescribeAndListController {
 	
 	private static class ListWorkerResults {
 		
-		private LogHandler logHandler;
+		private SOAPLogHandler logHandler;
 		private SortedMap<String, FileProperties> list;
 		
-		public void setLogHandler(LogHandler logHandler) {
+		public void setLogHandler(SOAPLogHandler logHandler) {
 			this.logHandler = logHandler;
 		}
-		public LogHandler getLogHandler() {
+		public SOAPLogHandler getLogHandler() {
 			return logHandler;
 		}
 		
@@ -75,8 +73,8 @@ public class DescribeAndListController {
 	private Task<DescribeWorkerResults> describeWorker;
 	private Task<ListWorkerResults> listWorker;
 	
-	private SortedMap<String, DescribeMetadataObject> describeResult;
-	private Map<String, SortedMap<String, FileProperties>> listResults = new TreeMap<>();
+	private SortedMap<String, DescribeMetadataObject> metadataDescription;
+	private Map<String, SortedMap<String, FileProperties>> metadataLists = new TreeMap<>();
 	
 	public DescribeAndListController(Main application) {
 		this.application = application;
@@ -126,14 +124,14 @@ public class DescribeAndListController {
 				if (selectedItem.getParent() == describeAndListTree.getRoot()) {
 					listStartButton.setDisable(false);
 					
-					DescribeMetadataObject dmo = describeResult.get(selectedItem.getValue());
+					DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
 					application.getPropertiesController().showPropertiesForType(dmo);
 				}
 				else {
 					listStartButton.setDisable(true);
 					
 					String typeName = selectedItem.getParent().getValue();
-					SortedMap<String, FileProperties> fileMap = listResults.get(typeName);
+					SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
 					String fileName = selectedItem.getValue();
 					FileProperties fp = fileMap.get(fileName);
 					application.getPropertiesController().showPropertiesForFile(fp);
@@ -151,11 +149,11 @@ public class DescribeAndListController {
 			describeWorker = createDescribeWorker();
 			describeWorker.setOnSucceeded(es -> {
 				application.getPropertiesController().showPropertiesForType(null);
-				listResults.clear();
-				describeResult = describeWorker.getValue().getDescription();
+				metadataLists.clear();
+				metadataDescription = describeWorker.getValue().getDescription();
 				ObservableList<TreeItem<String>> describeAndListTreeItems = describeAndListTree.getRoot().getChildren();
 				describeAndListTreeItems.clear();
-				for (String metadataTypeName : describeResult.keySet()) {
+				for (String metadataTypeName : metadataDescription.keySet()) {
 					describeAndListTreeItems.add(new TreeItem<String>(metadataTypeName));
 				}
 				application.getLogController().log(describeWorker.getValue().getLogHandler());
@@ -178,9 +176,10 @@ public class DescribeAndListController {
 			listWorker = createListWorker(selectedTypeName);
 			listWorker.setOnSucceeded(es -> {
 				SortedMap<String, FileProperties> listResult = listWorker.getValue().getList();
-				listResults.put(selectedTypeName, listResult);
+				metadataLists.put(selectedTypeName, listResult);
 				if (listResult != null) {
 					TreeItem<String> selectedTypeItem = describeAndListTree.getSelectionModel().getSelectedItem();
+					selectedTypeItem.getChildren().clear();
 					for (String fileName : listResult.keySet()) {
 						selectedTypeItem.getChildren().add(new TreeItem<String>(fileName));
 					}
@@ -227,20 +226,21 @@ public class DescribeAndListController {
 			@Override
 			protected DescribeWorkerResults call() throws Exception {
 				
-				DescribeWorkerResults results = new DescribeWorkerResults();
+				DescribeWorkerResults workerResults = new DescribeWorkerResults();
 				
 				try {
-					LogHandler logHandler = new LogHandler();
-					logHandler.setTitle("DESCRIBE");
+					SOAPLogHandler logHandler = new SOAPLogHandler("DESCRIBE");
 					application.metadataConnection().get().getConfig().addMessageHandler(logHandler);
-					results.setLogHandler(logHandler);
+					workerResults.setLogHandler(logHandler);
+					
 					double apiVersion = application.apiVersion().get();
-					DescribeMetadataResult dmResult = application.metadataConnection().get().describeMetadata(apiVersion);
-					SortedMap<String, DescribeMetadataObject> description = new TreeMap<>();
-					for (DescribeMetadataObject dmo : dmResult.getMetadataObjects()) {
-						description.put(dmo.getXmlName(), dmo);
+					DescribeMetadataResult mdapiDescribe = application.metadataConnection().get().describeMetadata(apiVersion);
+					
+					SortedMap<String, DescribeMetadataObject> describeResult = new TreeMap<>();
+					for (DescribeMetadataObject dmo : mdapiDescribe.getMetadataObjects()) {
+						describeResult.put(dmo.getXmlName(), dmo);
 					}
-					results.setDescription(description);
+					workerResults.setDescription(describeResult);
 					
 					application.metadataConnection().get().getConfig().clearMessageHandlers();
 				}
@@ -248,7 +248,7 @@ public class DescribeAndListController {
 					// TODO: Fix this
 					e.printStackTrace();
 				}
-				return results;
+				return workerResults;
 			}
 		};
 	}
@@ -260,22 +260,24 @@ public class DescribeAndListController {
 			@Override
 			protected ListWorkerResults call() throws Exception {
 				
-				ListWorkerResults results = new ListWorkerResults();
+				ListWorkerResults workerResults = new ListWorkerResults();
 				
 				try {
-					LogHandler logHandler = new LogHandler();
-					logHandler.setTitle("LIST");
+					SOAPLogHandler logHandler = new SOAPLogHandler("LIST");
 					application.metadataConnection().get().getConfig().addMessageHandler(logHandler);
-					results.setLogHandler(logHandler);
-					SortedMap<String, FileProperties> list = new TreeMap<>();
+					workerResults.setLogHandler(logHandler);
+					
+					SortedMap<String, FileProperties> listResult = new TreeMap<>();
 					ListMetadataQuery query = new ListMetadataQuery();
 					query.setType(typeName);
+					
 					double apiVersion = application.apiVersion().get();
-					FileProperties[] listResult = application.metadataConnection().get().listMetadata(new ListMetadataQuery[]{query}, apiVersion);
-					for (FileProperties fp : listResult) {
-						list.put(fp.getFileName(), fp);
+					FileProperties[] mdapiList = application.metadataConnection().get().listMetadata(new ListMetadataQuery[]{query}, apiVersion);
+					
+					for (FileProperties fp : mdapiList) {
+						listResult.put(fp.getFileName(), fp);
 					}
-					results.setList(list);
+					workerResults.setList(listResult);
 					
 					application.metadataConnection().get().getConfig().clearMessageHandlers();
 				}
@@ -284,7 +286,7 @@ public class DescribeAndListController {
 					e.printStackTrace();
 				}
 				
-				return results;
+				return workerResults;
 			}
 		};
 	}

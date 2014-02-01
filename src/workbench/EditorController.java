@@ -18,19 +18,17 @@ import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
 
-import workbench.LogController.LogHandler;
-
 public class EditorController {
 	
 	private static class ReadWorkerResult {
 		
-		private LogHandler logHandler;
+		private SOAPLogHandler logHandler;
 		private Metadata metadata;
 		
-		public void setLogHandler(LogHandler logHandler) {
+		public void setLogHandler(SOAPLogHandler logHandler) {
 			this.logHandler = logHandler;
 		}
-		public LogHandler getLogHandler() {
+		public SOAPLogHandler getLogHandler() {
 			return logHandler;
 		}
 		
@@ -237,8 +235,7 @@ public class EditorController {
 				
 				try {
 					MetadataConnection conn = application.metadataConnection().get();
-					LogHandler logHandler = new LogHandler();
-					logHandler.setTitle("READ: " + fullName);
+					SOAPLogHandler logHandler = new SOAPLogHandler("READ: " + fullName);
 					conn.getConfig().addMessageHandler(logHandler);
 					result.setLogHandler(logHandler);
 					Metadata[] records = conn.readMetadata(type, new String[]{fullName}).getRecords();

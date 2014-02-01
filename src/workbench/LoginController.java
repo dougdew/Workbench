@@ -20,21 +20,19 @@ import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 
-import workbench.LogController.LogHandler;
-
 public class LoginController {
 	
 	private static class LoginWorkerResults {
 		
-		private LogHandler logHandler;
+		private SOAPLogHandler logHandler;
 		private boolean success;
 		private EnterpriseConnection eConnection;
 		private MetadataConnection mConnection;
 		
-		public LogHandler getLogHandler() {
+		public SOAPLogHandler getLogHandler() {
 			return logHandler;
 		}
-		public void setLogHandler(LogHandler logHandler) {
+		public void setLogHandler(SOAPLogHandler logHandler) {
 			this.logHandler = logHandler;
 		}
 		
@@ -246,8 +244,7 @@ public class LoginController {
 					eConfig.setAuthEndpoint(serverUrl + apiVersion);
 					eConfig.setServiceEndpoint(serverUrl + apiVersion);
 					eConfig.setManualLogin(true);
-					LogHandler logHandler = new LogHandler();
-					logHandler.setTitle("LOGIN");
+					SOAPLogHandler logHandler = new SOAPLogHandler("LOGIN");
 					eConfig.addMessageHandler(logHandler);
 					results.setLogHandler(logHandler);
 					EnterpriseConnection eConnection = new EnterpriseConnection(eConfig);
