@@ -24,7 +24,7 @@ public class DefaultEditor implements Editor {
 	
 	public void setMetadata(Metadata metadata) {
 		this.metadata = metadata;
-		loadMetadata();
+		setUIFromMetadata();
 	}
 	
 	private void createGraph() {
@@ -33,7 +33,7 @@ public class DefaultEditor implements Editor {
 		root.setEditable(false);
 	}
 	
-	private void loadMetadata() {
+	private void setUIFromMetadata() {
 		root.clear();
 		if (metadata != null) {
 			root.appendText(metadata.getClass().getName());

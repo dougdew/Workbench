@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+<children><Label layoutX="43.353271484375" layoutY="29.0" text="Label" /><TextField fx:id="label" layoutX="96.0" layoutY="24.0" /><Label layoutX="43.70654296875" layoutY="80.0" text="Plural Label" /><TextField fx:id="pluralLabel" layoutX="158.2734375" layoutY="75.0" />
+</children></AnchorPane>

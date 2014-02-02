@@ -1,9 +1,12 @@
 package workbench;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import javafx.concurrent.Task;
+import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Node;
@@ -97,7 +100,10 @@ public class EditorController {
 	private Main application;
 	
 	private AnchorPane root;
-	private final Button refreshButton = new Button("Refresh");
+	private final Button createButton = new Button("Create");
+	private final Button readButton = new Button("Read");
+	private final Button updateButton = new Button("Update");
+	private final Button deleteButton = new Button("Delete");
 	private final Button cancelButton = new Button("Cancel");
 	private final TabPane tabPane = new TabPane();
 	
@@ -111,6 +117,18 @@ public class EditorController {
 
 	public Node getRoot() {
 		return root;
+	}
+	
+	public void closeAll() {
+		Iterator<Tab> tabIter = tabPane.getTabs().iterator();
+		while (tabIter.hasNext()) {
+			Tab tab = tabIter.next();
+			tabIter.remove();
+			EventHandler<Event> onClosedHandler = tab.getOnClosed();
+			if (onClosedHandler != null) {
+				onClosedHandler.handle(null);
+			}
+		}
 	}
 	
 	public void edit(String type, String fullName) {
@@ -131,7 +149,7 @@ public class EditorController {
 		tab.setOnClosed(e -> {
 			fileControllers.remove(tab.getText());
 			if (fileControllers.size() == 0) {
-				refreshButton.setDisable(true);
+				readButton.setDisable(true);
 			}
 		});
 		fileController.setTab(tab);
@@ -147,7 +165,7 @@ public class EditorController {
 			editor.setMetadata(m);
 			application.getLogController().log(readWorker.getValue().getLogHandler());
 			cancelButton.setDisable(true);
-			refreshButton.setDisable(false);
+			readButton.setDisable(false);
 		});	
 		fileController.setReadWorker(readWorker);
 		
@@ -156,7 +174,7 @@ public class EditorController {
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
 		
-		refreshButton.setDisable(true);
+		readButton.setDisable(true);
 		cancelButton.setDisable(false);
 		
 		new Thread(readWorker).start();
@@ -173,8 +191,11 @@ public class EditorController {
 		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
 		root.getChildren().add(editorOperationsBar);
 		
-		refreshButton.setDisable(true);
-		refreshButton.setOnAction(e -> {
+		createButton.setDisable(true);
+		editorOperationsBar.getChildren().add(createButton);
+		
+		readButton.setDisable(true);
+		readButton.setOnAction(e -> {
 			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
 			FileController fileController = fileControllers.get(typeQualifiedName);
 			Task<ReadWorkerResults> readWorker = createReadWorker(fileController.getType(), fileController.getFullName());
@@ -184,16 +205,22 @@ public class EditorController {
 				editor.setMetadata(m);
 				application.getLogController().log(readWorker.getValue().getLogHandler());
 				cancelButton.setDisable(true);
-				refreshButton.setDisable(false);
+				readButton.setDisable(false);
 			});	
 			fileController.setReadWorker(readWorker);
 			
-			refreshButton.setDisable(true);
+			readButton.setDisable(true);
 			cancelButton.setDisable(false);
 			
 			new Thread(readWorker).start();
 		});
-		editorOperationsBar.getChildren().add(refreshButton);
+		editorOperationsBar.getChildren().add(readButton);
+		
+		updateButton.setDisable(true);
+		editorOperationsBar.getChildren().add(updateButton);
+		
+		deleteButton.setDisable(true);
+		editorOperationsBar.getChildren().add(deleteButton);
 		
 		cancelButton.setDisable(true);
 		cancelButton.setOnAction(e -> {
@@ -201,7 +228,7 @@ public class EditorController {
 			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
 			FileController fileController = fileControllers.get(typeQualifiedName);
 			fileController.getReadWorker().cancel();
-			refreshButton.setDisable(false);
+			readButton.setDisable(false);
 		});
 		editorOperationsBar.getChildren().add(cancelButton);
 		
