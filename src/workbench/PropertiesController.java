@@ -52,8 +52,11 @@ public class PropertiesController {
 	}
 
 	private Main application;
+	
 	private AnchorPane root;
-	TableView<MetadataProperty> tableView;
+	private TableView<MetadataProperty> tableView;
+	private TableColumn<MetadataProperty, String> nameCol;
+	private TableColumn<MetadataProperty, String> valueCol;
 	
 	public PropertiesController(Main application) {
 		this.application = application;
@@ -111,25 +114,23 @@ public class PropertiesController {
 		root = new AnchorPane();
 		
 		tableView = new TableView<>();
+		AnchorPane.setTopAnchor(tableView, 0.0);
+		AnchorPane.setBottomAnchor(tableView, 0.0);
+		AnchorPane.setLeftAnchor(tableView, 0.0);
+		AnchorPane.setRightAnchor(tableView, 0.0);		
+		root.getChildren().add(tableView);
 		
-		TableColumn<MetadataProperty, String> nameCol = new TableColumn<>();
+		nameCol = new TableColumn<>();
 		nameCol.setText("Name");
 		nameCol.setPrefWidth(150.0);
 		nameCol.setCellValueFactory(new PropertyValueFactory<MetadataProperty, String>("name"));
 		tableView.getColumns().add(nameCol);
 		
-		TableColumn<MetadataProperty, String> valueCol = new TableColumn<>();
+		valueCol = new TableColumn<>();
 		valueCol.setText("Value");
 		valueCol.setPrefWidth(260.0);
 		valueCol.setCellValueFactory(new PropertyValueFactory<MetadataProperty, String>("value"));
 		tableView.getColumns().add(valueCol);
-		
-		AnchorPane.setTopAnchor(tableView, 0.0);
-		AnchorPane.setBottomAnchor(tableView, 0.0);
-		AnchorPane.setLeftAnchor(tableView, 0.0);
-		AnchorPane.setRightAnchor(tableView, 0.0);
-		
-		root.getChildren().add(tableView);
 	}
 	
 	private void handleMetadataConnectionChanged() {

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -99,11 +100,17 @@ public class LoginController {
 	};
 	
 	private Main application;
-	private HBox root;
-	private Rectangle loginStatus;
 	
 	private Task<LoginWorkerResults> loginWorker;
-
+	
+	private HBox root;
+	private Rectangle loginStatus;	
+	private Button loginLogoutButton;
+	private ChoiceBox<String> serverBox;
+	private ChoiceBox<String> versionBox;
+	private TextField userField;
+	private PasswordField passwordField;
+	
 	public LoginController(Main application) {
 		this.application = application;
 		createGraph();
@@ -132,7 +139,7 @@ public class LoginController {
 	}
 	
 	private void createGraph() {
-		
+
 		root = new HBox();
 		root.setAlignment(Pos.BASELINE_CENTER);
 		root.setSpacing(5.0);
@@ -140,76 +147,32 @@ public class LoginController {
 		loginStatus = new Rectangle(10, 10);
 		loginStatus.setFill(Color.RED);
 		
-		Button loginLogoutButton = new Button("Log In");
+		loginLogoutButton = new Button("Log In");
 		loginLogoutButton.setGraphic(loginStatus);
+		loginLogoutButton.setOnAction(e -> handleLoginLogoutButtonPressed(e));
 		root.getChildren().add(loginLogoutButton);
 		
-		ChoiceBox<String> serverBox = new ChoiceBox<>();
+		serverBox = new ChoiceBox<>();
 		for (String server : SERVERS.keySet()) {
 			serverBox.getItems().add(server);
 		}
 		serverBox.getSelectionModel().select(0);
 		root.getChildren().add(serverBox);
 		
-		ChoiceBox<String> versionBox = new ChoiceBox<>();
+		versionBox = new ChoiceBox<>();
 		for (String version : VERSIONS) {
 			versionBox.getItems().add(version);
 		}
 		versionBox.getSelectionModel().select(0);
 		root.getChildren().add(versionBox);
 		
-		TextField userField = new TextField();
+		userField = new TextField();
 		userField.setPromptText("User Name");
 		root.getChildren().add(userField);
 		
-		PasswordField passwordField = new PasswordField();
+		passwordField = new PasswordField();
 		passwordField.setPromptText("Password");
 		root.getChildren().add(passwordField);
-		
-		loginLogoutButton.setOnAction(e -> {
-			
-			if (loginLogoutButton.getText().equals("Log In")) {
-				String serverName = serverBox.getValue();
-				String version = versionBox.getValue();
-				String userName = userField.getText();
-				if (userName == null || userName.length() == 0) {
-					return;
-				}
-				String password = passwordField.getText();
-				if (password == null || password.length() == 0) {
-					return;
-				}
-				
-				String serverUrl = SERVERS.get(serverName);
-				
-				if (application.enterpriseConnection().get() != null) {
-					logout();
-				}
-				loginWorker = createLoginWorker(serverUrl, version, userName, password);
-				loginWorker.setOnSucceeded(es -> {
-					LoginWorkerResults loginResults = loginWorker.getValue();
-					if (loginResults.isSuccess()) {
-						application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
-						application.metadataConnection().set(loginResults.getMetadataConnection());
-						loginStatus.setFill(Color.GREEN);
-						loginLogoutButton.setText("Log Out");
-						application.apiVersion().set((new Double(version)).doubleValue());
-					}
-					else {
-						application.enterpriseConnection().set(null);
-						application.metadataConnection().set(null);
-						loginStatus.setFill(Color.RED);
-					}
-					application.getLogController().log(loginResults.getLogHandler());
-				});
-				
-				new Thread(loginWorker).start();
-			}
-			else {
-				logout();
-				loginLogoutButton.setText("Log In");
-			}
-		});
 	}
 	
 	private void handleEnterpriseConnectionChanged() {
@@ -227,6 +190,51 @@ public class LoginController {
 		}
 		else {
 			// TODO: ?
+		}
+	}
+	
+	private void handleLoginLogoutButtonPressed(ActionEvent e) {
+		
+		if (loginLogoutButton.getText().equals("Log In")) {
+			String serverName = serverBox.getValue();
+			String version = versionBox.getValue();
+			String userName = userField.getText();
+			if (userName == null || userName.length() == 0) {
+				return;
+			}
+			String password = passwordField.getText();
+			if (password == null || password.length() == 0) {
+				return;
+			}
+			
+			String serverUrl = SERVERS.get(serverName);
+			
+			if (application.enterpriseConnection().get() != null) {
+				logout();
+			}
+			loginWorker = createLoginWorker(serverUrl, version, userName, password);
+			loginWorker.setOnSucceeded(es -> {
+				LoginWorkerResults loginResults = loginWorker.getValue();
+				if (loginResults.isSuccess()) {
+					application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
+					application.metadataConnection().set(loginResults.getMetadataConnection());
+					loginStatus.setFill(Color.GREEN);
+					loginLogoutButton.setText("Log Out");
+					application.apiVersion().set((new Double(version)).doubleValue());
+				}
+				else {
+					application.enterpriseConnection().set(null);
+					application.metadataConnection().set(null);
+					loginStatus.setFill(Color.RED);
+				}
+				application.getLogController().log(loginResults.getLogHandler());
+			});
+			
+			new Thread(loginWorker).start();
+		}
+		else {
+			logout();
+			loginLogoutButton.setText("Log In");
 		}
 	}
 	

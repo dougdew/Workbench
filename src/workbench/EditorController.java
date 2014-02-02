@@ -99,15 +99,15 @@ public class EditorController {
 	
 	private Main application;
 	
-	private AnchorPane root;
-	private final Button createButton = new Button("Create");
-	private final Button readButton = new Button("Read");
-	private final Button updateButton = new Button("Update");
-	private final Button deleteButton = new Button("Delete");
-	private final Button cancelButton = new Button("Cancel");
-	private final TabPane tabPane = new TabPane();
-	
 	private Map<String, FileController> fileControllers = new HashMap<String, FileController>();
+	
+	private AnchorPane root;
+	private Button createButton;
+	private Button readButton;
+	private Button updateButton;
+	private Button deleteButton;
+	private Button cancelButton;
+	private TabPane tabPane;
 	
 	public EditorController(Main application) {
 		this.application = application;
@@ -191,9 +191,11 @@ public class EditorController {
 		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
 		root.getChildren().add(editorOperationsBar);
 		
+		createButton = new Button("Create");
 		createButton.setDisable(true);
 		editorOperationsBar.getChildren().add(createButton);
 		
+		readButton = new Button("Read");
 		readButton.setDisable(true);
 		readButton.setOnAction(e -> {
 			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
@@ -216,12 +218,15 @@ public class EditorController {
 		});
 		editorOperationsBar.getChildren().add(readButton);
 		
+		updateButton = new Button("Update");
 		updateButton.setDisable(true);
 		editorOperationsBar.getChildren().add(updateButton);
 		
+		deleteButton = new Button("Delete");
 		deleteButton.setDisable(true);
 		editorOperationsBar.getChildren().add(deleteButton);
 		
+		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
 		cancelButton.setOnAction(e -> {
 			cancelButton.setDisable(true);
@@ -232,6 +237,7 @@ public class EditorController {
 		});
 		editorOperationsBar.getChildren().add(cancelButton);
 		
+		tabPane = new TabPane();
 		tabPane.setSide(Side.BOTTOM);
 		AnchorPane.setTopAnchor(tabPane, 40.0);
 		AnchorPane.setBottomAnchor(tabPane, 0.0);
@@ -245,7 +251,9 @@ public class EditorController {
 		if (application.metadataConnection().get() != null) {
 		}
 		else {
-			// TODO: This matters
+			createButton.setDisable(true);
+			readButton.setDisable(true);
+			updateButton.setDisable(true);
 		}
 	}
 	

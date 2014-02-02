@@ -10,6 +10,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
+import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -28,8 +29,9 @@ public class LogController {
 	private Main application;
 	
 	private AnchorPane root;
-	private final Button clearButton = new Button("Clear");
-	private final TextArea textArea = new TextArea();
+	private HBox editorOperationsBar;
+	private Button clearButton;
+	private TextArea textArea;
 	
 	public LogController(Main application) {
 		this.application = application;
@@ -42,6 +44,7 @@ public class LogController {
 	}
 	
 	public void log(LogMessage message) {
+		
 		if (message.getTitle() != null) {
 			textArea.appendText(message.getTitle() + "\n");
 		}
@@ -56,20 +59,19 @@ public class LogController {
 		
 		root = new AnchorPane();
 		
-		HBox editorOperationsBar = new HBox();
+		editorOperationsBar = new HBox();
 		editorOperationsBar.setAlignment(Pos.BASELINE_CENTER);
 		AnchorPane.setTopAnchor(editorOperationsBar, 6.0);
 		AnchorPane.setLeftAnchor(editorOperationsBar, 0.0);
 		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
 		root.getChildren().add(editorOperationsBar);
 		
+		clearButton = new Button("Clear");
 		clearButton.setDisable(true);
-		clearButton.setOnAction(e -> {
-			textArea.clear();
-			clearButton.setDisable(true);
-		});
+		clearButton.setOnAction(e -> handleClearButtonClicked(e));
 		editorOperationsBar.getChildren().add(clearButton);
 		
+		textArea = new TextArea();
 		AnchorPane.setTopAnchor(textArea, 40.0);
 		AnchorPane.setBottomAnchor(textArea, 0.0);
 		AnchorPane.setLeftAnchor(textArea, 0.0);
@@ -85,6 +87,12 @@ public class LogController {
 		else {
 			
 		}
+	}
+	
+	private void handleClearButtonClicked(ActionEvent e) {
+		
+		textArea.clear();
+		clearButton.setDisable(true);
 	}
 	
 	private String prettyFormat(String input) {
@@ -106,6 +114,4 @@ public class LogController {
 	        throw new RuntimeException(e); // simple exception handling, please review it
 	    }
 	}
-
-	
 }
