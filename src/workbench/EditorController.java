@@ -10,13 +10,15 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.TextArea;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 
 import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
+
+import workbench.editor.Editor;
+import workbench.editor.EditorFactory;
 
 public class EditorController {
 	
@@ -45,7 +47,8 @@ public class EditorController {
 		private String type;
 		private String fullName;
 		private Tab tab;
-		private TextArea textArea;
+		private Editor editor;
+		private Metadata metadata;
 		private Task<ReadWorkerResults> readWorker;
 		
 		public String getType() {
@@ -69,11 +72,18 @@ public class EditorController {
 			this.tab = tab;
 		}
 		
-		public TextArea getTextArea() {
-			return textArea;
+		public Editor getEditor() {
+			return editor;
 		}
-		public void setTextArea(TextArea textArea) {
-			this.textArea = textArea;
+		public void setEditor(Editor editor) {
+			this.editor = editor;
+		}
+		
+		public Metadata getMetadata() {
+			return metadata;
+		}
+		public void setMetadata(Metadata metadata) {
+			this.metadata = metadata;
 		}
 		
 		public Task<ReadWorkerResults> getReadWorker() {
@@ -105,20 +115,19 @@ public class EditorController {
 	
 	public void edit(String type, String fullName) {
 		
-		String documentName = type + ":" + fullName;
+		String typeQualifiedName = type + ":" + fullName;
 		
-		FileController fileController = fileControllers.get(documentName);
-		if(fileController != null) {
-			tabPane.getSelectionModel().select(fileController.getTab());
+		if (fileControllers.get(typeQualifiedName) != null) {
+			tabPane.getSelectionModel().select(fileControllers.get(typeQualifiedName).getTab());
 			return;
 		}
 		
-		fileController = new FileController();
+		final FileController fileController = new FileController();
 		fileController.setType(type);
 		fileController.setFullName(fullName);
 		
 		Tab tab = new Tab();
-		tab.setText(documentName);
+		tab.setText(typeQualifiedName);
 		tab.setOnClosed(e -> {
 			fileControllers.remove(tab.getText());
 			if (fileControllers.size() == 0) {
@@ -127,27 +136,22 @@ public class EditorController {
 		});
 		fileController.setTab(tab);
 		
-		final TextArea textArea = new TextArea();
-		textArea.setEditable(false);
-		tab.setContent(textArea);
-		fileController.setTextArea(textArea);
+		final Editor editor = EditorFactory.createEditor(type);
+		tab.setContent(editor.getRoot());
+		fileController.setEditor(editor);
 		
 		Task<ReadWorkerResults> readWorker = createReadWorker(type, fullName);
 		readWorker.setOnSucceeded(e -> {
 			Metadata m = readWorker.getValue().getMetadata();
-			if (m != null) {
-				textArea.appendText(m.getClass().getName());
-			}
-			else {
-				textArea.appendText("Unable to read");
-			}
+			fileController.setMetadata(m);
+			editor.setMetadata(m);
 			application.getLogController().log(readWorker.getValue().getLogHandler());
 			cancelButton.setDisable(true);
 			refreshButton.setDisable(false);
 		});	
 		fileController.setReadWorker(readWorker);
 		
-		fileControllers.put(documentName, fileController);
+		fileControllers.put(typeQualifiedName, fileController);
 		
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
@@ -171,19 +175,13 @@ public class EditorController {
 		
 		refreshButton.setDisable(true);
 		refreshButton.setOnAction(e -> {
-			String documentName = tabPane.getSelectionModel().getSelectedItem().getText();
-			FileController fileController = fileControllers.get(documentName);
+			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
+			FileController fileController = fileControllers.get(typeQualifiedName);
 			Task<ReadWorkerResults> readWorker = createReadWorker(fileController.getType(), fileController.getFullName());
 			readWorker.setOnSucceeded(es -> {
 				Metadata m = readWorker.getValue().getMetadata();
-				TextArea textArea = fileController.getTextArea();
-				textArea.clear();
-				if (m != null) {
-					textArea.appendText(m.getClass().getName());
-				}
-				else {
-					textArea.appendText("Unable to read");
-				}
+				Editor editor = fileController.getEditor();
+				editor.setMetadata(m);
 				application.getLogController().log(readWorker.getValue().getLogHandler());
 				cancelButton.setDisable(true);
 				refreshButton.setDisable(false);
@@ -200,8 +198,8 @@ public class EditorController {
 		cancelButton.setDisable(true);
 		cancelButton.setOnAction(e -> {
 			cancelButton.setDisable(true);
-			String documentName = tabPane.getSelectionModel().getSelectedItem().getText();
-			FileController fileController = fileControllers.get(documentName);
+			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
+			FileController fileController = fileControllers.get(typeQualifiedName);
 			fileController.getReadWorker().cancel();
 			refreshButton.setDisable(false);
 		});
