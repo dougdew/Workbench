@@ -36,10 +36,14 @@ public class DefaultEditor implements Editor {
 	private void setUIFromMetadata() {
 		root.clear();
 		if (metadata != null) {
-			root.appendText(metadata.getClass().getName());
+			root.appendText(metadata.toString());
 		}
 		else {
 			root.appendText("Null metadata");
 		}
+	}
+	
+	private void setMetadataFromUI() {
+		
 	}
 }
