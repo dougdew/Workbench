@@ -80,12 +80,8 @@ public class LogController {
 	}
 	
 	private void handleMetadataConnectionChanged() {
-		
-		if (application.metadataConnection().get() != null) {
-			
-		}
-		else {
-			
+		if (application.metadataConnection().get() == null) {
+			// TODO:
 		}
 	}
 	

@@ -74,8 +74,9 @@ public class DescribeAndListController {
 	
 	private AnchorPane root;
 	private HBox treeOperationsBar;
-	private TreeView<String> describeAndListTree;
-	private TreeItem<String> describeAndListTreeRoot;
+	// TODO: Rename this
+	private TreeView<String> descriptionAndListsTree;
+	private TreeItem<String> descriptionAndListsTreeRoot;
 	private Button describeButton;
 	private Button listButton;
 	private Button cancelButton;
@@ -84,6 +85,7 @@ public class DescribeAndListController {
 		this.application = application;
 		createGraph();
 		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());
+		application.orgName().addListener((o, oldValue, newValue) -> handleOrgNameChanged(oldValue, newValue));
 	}
 	
 	public Node getRoot() {
@@ -116,33 +118,37 @@ public class DescribeAndListController {
 		cancelButton.setOnAction(e -> handleCancelButtonClicked(e));
 		treeOperationsBar.getChildren().add(cancelButton);
 		
-		describeAndListTree = new TreeView<>();
-		describeAndListTree.setDisable(true);
-		describeAndListTree.setShowRoot(false);
-		describeAndListTree.setOnMouseClicked(e -> handleTreeItemClicked(e));
-		AnchorPane.setTopAnchor(describeAndListTree, 40.0);
-		AnchorPane.setBottomAnchor(describeAndListTree, 0.0);
-		AnchorPane.setLeftAnchor(describeAndListTree, 0.0);
-		AnchorPane.setRightAnchor(describeAndListTree, 0.0);
-		root.getChildren().add(describeAndListTree);
+		descriptionAndListsTree = new TreeView<>();
+		descriptionAndListsTree.setOnMouseClicked(e -> handleTreeItemClicked(e));
+		AnchorPane.setTopAnchor(descriptionAndListsTree, 40.0);
+		AnchorPane.setBottomAnchor(descriptionAndListsTree, 0.0);
+		AnchorPane.setLeftAnchor(descriptionAndListsTree, 0.0);
+		AnchorPane.setRightAnchor(descriptionAndListsTree, 0.0);
+		root.getChildren().add(descriptionAndListsTree);
 		
-		describeAndListTreeRoot = new TreeItem<>("REPLACE WITH ORG ID WHEN LOGGED IN");
-		describeAndListTree.setRoot(describeAndListTreeRoot);
-		describeAndListTreeRoot.setExpanded(true);
+		descriptionAndListsTreeRoot = new TreeItem<>("");
+		descriptionAndListsTree.setRoot(descriptionAndListsTreeRoot);
+		descriptionAndListsTreeRoot.setExpanded(true);
 	}
 	
 	private void handleMetadataConnectionChanged() {
-		if (application.enterpriseConnection().get() != null && application.metadataConnection().get() != null) {
-			String orgName = application.orgName().get();
-			describeAndListTree.getRoot().setValue(orgName);
-			describeAndListTree.setShowRoot(true);
-			describeAndListTree.setDisable(false);
-		}
-		else {
-			describeAndListTree.setDisable(true);
+		if (application.metadataConnection().get() == null) {
 			describeButton.setDisable(true);
 			listButton.setDisable(true);
 		}
+	}
+	
+	private void handleOrgNameChanged(String oldOrgName, String newOrgName) {
+		descriptionAndListsTree.getRoot().getChildren().clear();
+		if (metadataDescription != null) {
+			metadataDescription.clear();
+		}
+		metadataLists.clear();
+		
+		descriptionAndListsTreeRoot.setValue(newOrgName);
+		descriptionAndListsTree.getSelectionModel().select(descriptionAndListsTreeRoot);
+		
+		setButtonDisablesForTreeSelection();
 	}
 	
 	private void handleTreeItemClicked(MouseEvent e) {
@@ -154,12 +160,15 @@ public class DescribeAndListController {
 	
 	private void setButtonDisablesForTreeSelection() {
 		
-		TreeItem<String> selectedItem = describeAndListTree.getSelectionModel().getSelectedItem();
-		if (selectedItem == describeAndListTree.getRoot()) {
+		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
+		if (selectedItem == null) {
+			return;
+		}
+		if (selectedItem == descriptionAndListsTree.getRoot()) {
 			describeButton.setDisable(false);
 			listButton.setDisable(true);
 		}
-		else if (selectedItem.getParent() == describeAndListTree.getRoot()) {
+		else if (selectedItem.getParent() == descriptionAndListsTree.getRoot()) {
 			describeButton.setDisable(true);
 			listButton.setDisable(false);
 			
@@ -175,13 +184,14 @@ public class DescribeAndListController {
 			String fileName = selectedItem.getValue();
 			FileProperties fp = fileMap.get(fileName);
 			application.getPropertiesController().showPropertiesForFile(fp);
+			// TOOD: Eliminate this
 			application.getEditorController().edit(typeName, fp.getFullName());
 		}
 	}
 	
 	private void handleDescribeButtonClicked(ActionEvent e) {
 		
-		describeAndListTree.setDisable(true);
+		descriptionAndListsTree.setDisable(true);
 		describeButton.setDisable(true);
 		cancelButton.setDisable(false);
 		
@@ -190,7 +200,7 @@ public class DescribeAndListController {
 			application.getPropertiesController().showPropertiesForType(null);
 			metadataLists.clear();
 			metadataDescription = describeWorker.getValue().getDescription();
-			ObservableList<TreeItem<String>> describeAndListTreeItems = describeAndListTree.getRoot().getChildren();
+			ObservableList<TreeItem<String>> describeAndListTreeItems = descriptionAndListsTree.getRoot().getChildren();
 			describeAndListTreeItems.clear();
 			for (String metadataTypeName : metadataDescription.keySet()) {
 				describeAndListTreeItems.add(new TreeItem<String>(metadataTypeName));
@@ -201,7 +211,7 @@ public class DescribeAndListController {
 			
 			cancelButton.setDisable(true);
 			describeButton.setDisable(false);
-			describeAndListTree.setDisable(false);
+			descriptionAndListsTree.setDisable(false);
 		});
 		
 		new Thread(describeWorker).start();
@@ -209,13 +219,13 @@ public class DescribeAndListController {
 	
 	private void handleListButtonClicked(ActionEvent e) {
 		
-		describeAndListTree.setDisable(true);
+		descriptionAndListsTree.setDisable(true);
 		listButton.setDisable(true);
 		cancelButton.setDisable(false);
 		
 		// TODO: Record and maintain scroll position
 		
-		TreeItem<String> selectedItem = describeAndListTree.getSelectionModel().getSelectedItem();
+		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 		String selectedTypeName = selectedItem.getValue().toString();
 		
 		listWorker = createListWorker(selectedTypeName);
@@ -223,7 +233,7 @@ public class DescribeAndListController {
 			SortedMap<String, FileProperties> listResult = listWorker.getValue().getList();
 			metadataLists.put(selectedTypeName, listResult);
 			if (listResult != null) {
-				TreeItem<String> selectedTypeItem = describeAndListTree.getSelectionModel().getSelectedItem();
+				TreeItem<String> selectedTypeItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 				selectedTypeItem.getChildren().clear();
 				for (String fileName : listResult.keySet()) {
 					selectedTypeItem.getChildren().add(new TreeItem<String>(fileName));
@@ -234,11 +244,11 @@ public class DescribeAndListController {
 			
 			listWorker = null;
 			
-			describeAndListTree.getSelectionModel().select(selectedItem);
+			descriptionAndListsTree.getSelectionModel().select(selectedItem);
 			
 			cancelButton.setDisable(true);
 			listButton.setDisable(false);
-			describeAndListTree.setDisable(false);
+			descriptionAndListsTree.setDisable(false);
 		});
 		
 		new Thread(listWorker).start();

@@ -123,9 +123,6 @@ public class LoginController {
 	public LoginController(Main application) {
 		this.application = application;
 		createGraph();
-		/*
-		application.enterpriseConnection().addListener((o, oldValue, newValue) -> handleEnterpriseConnectionChanged());
-		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());*/
 	}
 	
 	public Node getRoot() {
@@ -185,24 +182,6 @@ public class LoginController {
 		root.getChildren().add(passwordField);
 	}
 	
-	private void handleEnterpriseConnectionChanged() {
-		if (application.metadataConnection().get() != null) {
-			// TODO: ?
-		}
-		else {
-			// TODO: ?
-		}
-	}
-	
-	private void handleMetadataConnectionChanged() {
-		if (application.metadataConnection().get() != null) {
-			// TODO: ?
-		}
-		else {
-			// TODO: ?
-		}
-	}
-	
 	private void handleLoginLogoutButtonPressed(ActionEvent e) {
 		
 		if (loginLogoutButton.getText().equals("Log In")) {
@@ -226,11 +205,12 @@ public class LoginController {
 			loginWorker.setOnSucceeded(es -> {
 				LoginWorkerResults loginResults = loginWorker.getValue();
 				if (loginResults.isSuccess()) {
+					application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
+					application.metadataConnection().set(loginResults.getMetadataConnection());
 					application.apiVersion().set((new Double(version)).doubleValue());
 					application.orgId().set(loginResults.getUserInfo().getOrganizationName());
 					application.orgName().set(loginResults.getUserInfo().getOrganizationName());
-					application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
-					application.metadataConnection().set(loginResults.getMetadataConnection());
+		
 					loginStatus.setFill(Color.GREEN);
 					loginLogoutButton.setText("Log Out");
 				}
