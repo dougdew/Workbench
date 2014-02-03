@@ -76,9 +76,9 @@ public class DescribeAndListController {
 	private HBox treeOperationsBar;
 	private TreeView<String> describeAndListTree;
 	private TreeItem<String> describeAndListTreeRoot;
-	private Button describeStartButton;
-	private Button listStartButton;
-	private Button describeAndListCancelButton;
+	private Button describeButton;
+	private Button listButton;
+	private Button cancelButton;
 	
 	public DescribeAndListController(Main application) {
 		this.application = application;
@@ -101,22 +101,23 @@ public class DescribeAndListController {
 		AnchorPane.setRightAnchor(treeOperationsBar, 0.0);
 		root.getChildren().add(treeOperationsBar);
 			
-		describeStartButton = new Button("Describe");
-		describeStartButton.setDisable(true);
-		describeStartButton.setOnAction(e -> handleDescribeStartButtonClicked(e));
-		treeOperationsBar.getChildren().add(describeStartButton);
+		describeButton = new Button("Describe");
+		describeButton.setDisable(true);
+		describeButton.setOnAction(e -> handleDescribeButtonClicked(e));
+		treeOperationsBar.getChildren().add(describeButton);
 		
-		listStartButton = new Button("List");
-		listStartButton.setDisable(true);
-		listStartButton.setOnAction(e -> handleListStartButtonClicked(e));
-		treeOperationsBar.getChildren().add(listStartButton);
+		listButton = new Button("List");
+		listButton.setDisable(true);
+		listButton.setOnAction(e -> handleListButtonClicked(e));
+		treeOperationsBar.getChildren().add(listButton);
 		
-		describeAndListCancelButton = new Button("Cancel");
-		describeAndListCancelButton.setDisable(true);
-		describeAndListCancelButton.setOnAction(e -> handleDescribeAndListCancelButtonClicked(e));
-		treeOperationsBar.getChildren().add(describeAndListCancelButton);
+		cancelButton = new Button("Cancel");
+		cancelButton.setDisable(true);
+		cancelButton.setOnAction(e -> handleCancelButtonClicked(e));
+		treeOperationsBar.getChildren().add(cancelButton);
 		
 		describeAndListTree = new TreeView<>();
+		describeAndListTree.setDisable(true);
 		describeAndListTree.setShowRoot(false);
 		describeAndListTree.setOnMouseClicked(e -> handleTreeItemClicked(e));
 		AnchorPane.setTopAnchor(describeAndListTree, 40.0);
@@ -125,54 +126,64 @@ public class DescribeAndListController {
 		AnchorPane.setRightAnchor(describeAndListTree, 0.0);
 		root.getChildren().add(describeAndListTree);
 		
-		describeAndListTreeRoot = new TreeItem<>("Describe And List Tree Root");
+		describeAndListTreeRoot = new TreeItem<>("REPLACE WITH ORG ID WHEN LOGGED IN");
 		describeAndListTree.setRoot(describeAndListTreeRoot);
 		describeAndListTreeRoot.setExpanded(true);
 	}
 	
 	private void handleMetadataConnectionChanged() {
-		if (application.metadataConnection().get() != null) {
-			// TODO: Fix this. There should just be flags indicating that a describe or list operation is in progress
-			if (describeStartButton.isDisabled() && listStartButton.isDisabled() && describeAndListCancelButton.isDisabled()) {
-				describeStartButton.setDisable(false);
-				//listStartButton.setDisable(false);
-			}
+		if (application.enterpriseConnection().get() != null && application.metadataConnection().get() != null) {
+			String orgName = application.orgName().get();
+			describeAndListTree.getRoot().setValue(orgName);
+			describeAndListTree.setShowRoot(true);
+			describeAndListTree.setDisable(false);
 		}
 		else {
-			describeStartButton.setDisable(true);
-			listStartButton.setDisable(true);
+			describeAndListTree.setDisable(true);
+			describeButton.setDisable(true);
+			listButton.setDisable(true);
 		}
 	}
 	
 	private void handleTreeItemClicked(MouseEvent e) {
 		
-		if (e.getClickCount() == 1) {
-			
-			TreeItem<String> selectedItem = describeAndListTree.getSelectionModel().getSelectedItem();
-			if (selectedItem.getParent() == describeAndListTree.getRoot()) {
-				listStartButton.setDisable(false);
-				
-				DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
-				application.getPropertiesController().showPropertiesForType(dmo);
-			}
-			else {
-				listStartButton.setDisable(true);
-				
-				String typeName = selectedItem.getParent().getValue();
-				SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
-				String fileName = selectedItem.getValue();
-				FileProperties fp = fileMap.get(fileName);
-				application.getPropertiesController().showPropertiesForFile(fp);
-				application.getEditorController().edit(typeName, fp.getFullName());
-			}
+		if (e.getClickCount() == 1) {		
+			setButtonDisablesForTreeSelection();
 		}
 	}
 	
-	private void handleDescribeStartButtonClicked(ActionEvent e) {
+	private void setButtonDisablesForTreeSelection() {
 		
-		describeStartButton.setDisable(true);
-		listStartButton.setDisable(true);
-		describeAndListCancelButton.setDisable(false);
+		TreeItem<String> selectedItem = describeAndListTree.getSelectionModel().getSelectedItem();
+		if (selectedItem == describeAndListTree.getRoot()) {
+			describeButton.setDisable(false);
+			listButton.setDisable(true);
+		}
+		else if (selectedItem.getParent() == describeAndListTree.getRoot()) {
+			describeButton.setDisable(true);
+			listButton.setDisable(false);
+			
+			DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
+			application.getPropertiesController().showPropertiesForType(dmo);
+		}
+		else {
+			describeButton.setDisable(true);
+			listButton.setDisable(true);
+			
+			String typeName = selectedItem.getParent().getValue();
+			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
+			String fileName = selectedItem.getValue();
+			FileProperties fp = fileMap.get(fileName);
+			application.getPropertiesController().showPropertiesForFile(fp);
+			application.getEditorController().edit(typeName, fp.getFullName());
+		}
+	}
+	
+	private void handleDescribeButtonClicked(ActionEvent e) {
+		
+		describeAndListTree.setDisable(true);
+		describeButton.setDisable(true);
+		cancelButton.setDisable(false);
 		
 		describeWorker = createDescribeWorker();
 		describeWorker.setOnSucceeded(es -> {
@@ -185,22 +196,28 @@ public class DescribeAndListController {
 				describeAndListTreeItems.add(new TreeItem<String>(metadataTypeName));
 			}
 			application.getLogController().log(describeWorker.getValue().getLogHandler());
-			describeAndListCancelButton.setDisable(true);
-			describeStartButton.setDisable(false);
+			
+			describeWorker = null;
+			
+			cancelButton.setDisable(true);
+			describeButton.setDisable(false);
+			describeAndListTree.setDisable(false);
 		});
 		
 		new Thread(describeWorker).start();
 	}
 	
-	private void handleListStartButtonClicked(ActionEvent e) {
+	private void handleListButtonClicked(ActionEvent e) {
 		
-		listStartButton.setDisable(true);
-		describeStartButton.setDisable(true);
-		describeAndListCancelButton.setDisable(false);
+		describeAndListTree.setDisable(true);
+		listButton.setDisable(true);
+		cancelButton.setDisable(false);
 		
-		// TODO: Check that tree selection is appropriate
-		// TODO: Fix this as it assumes that only types can be selected, not instances.
-		String selectedTypeName = describeAndListTree.getSelectionModel().getSelectedItem().getValue().toString();
+		// TODO: Record and maintain scroll position
+		
+		TreeItem<String> selectedItem = describeAndListTree.getSelectionModel().getSelectedItem();
+		String selectedTypeName = selectedItem.getValue().toString();
+		
 		listWorker = createListWorker(selectedTypeName);
 		listWorker.setOnSucceeded(es -> {
 			SortedMap<String, FileProperties> listResult = listWorker.getValue().getList();
@@ -214,22 +231,32 @@ public class DescribeAndListController {
 				selectedTypeItem.setExpanded(true);
 			}
 			application.getLogController().log(listWorker.getValue().getLogHandler());
-			describeAndListCancelButton.setDisable(true);
-			listStartButton.setDisable(false);
-			describeStartButton.setDisable(false);
+			
+			listWorker = null;
+			
+			describeAndListTree.getSelectionModel().select(selectedItem);
+			
+			cancelButton.setDisable(true);
+			listButton.setDisable(false);
+			describeAndListTree.setDisable(false);
 		});
 		
 		new Thread(listWorker).start();
 	}
 	
-	private void handleDescribeAndListCancelButtonClicked(ActionEvent e) {
+	private void handleCancelButtonClicked(ActionEvent e) {
 		
-		describeAndListCancelButton.setDisable(true);
-		// TODO: Fix this to work with describe and list
-		describeWorker.cancel(true);
+		cancelButton.setDisable(true);
+		
+		if (describeWorker != null) {
+			describeWorker.cancel(true);
+		}
+		if (listWorker != null) {
+			listWorker.cancel(true);
+		}
+		
 		// TODO: Fix this to wait for cancel to complete
-		describeStartButton.setDisable(false);
-		listStartButton.setDisable(false);
+		setButtonDisablesForTreeSelection();
 	}
 	
 	private Task<DescribeWorkerResults> createDescribeWorker() {

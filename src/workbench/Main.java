@@ -5,6 +5,8 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -29,8 +31,9 @@ public class Main extends Application {
 	
 	private ObjectProperty<EnterpriseConnection> enterpriseConnectionProperty = new SimpleObjectProperty<>();
 	private ObjectProperty<MetadataConnection> metadataConnectionProperty = new SimpleObjectProperty<>();
-	
 	private DoubleProperty apiVersionProperty = new SimpleDoubleProperty();
+	private StringProperty orgIdProperty = new SimpleStringProperty();
+	private StringProperty orgNameProperty = new SimpleStringProperty();
 	
 	public static void main(String[] args) {
 		launch(args);
@@ -81,6 +84,14 @@ public class Main extends Application {
 	
 	public DoubleProperty apiVersion() {
 		return apiVersionProperty;
+	}
+	
+	public StringProperty orgId() {
+		return orgIdProperty;
+	}
+	
+	public StringProperty orgName() {
+		return orgNameProperty;
 	}
 	
 	private Scene createScene() {

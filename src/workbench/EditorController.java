@@ -192,14 +192,14 @@ public class EditorController {
 		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
 		root.getChildren().add(editorOperationsBar);
 		
-		createButton = new Button("Create");
-		createButton.setDisable(true);
-		editorOperationsBar.getChildren().add(createButton);
-		
 		readButton = new Button("Read");
 		readButton.setDisable(true);
 		readButton.setOnAction(e -> handleReadButtonClicked(e));
 		editorOperationsBar.getChildren().add(readButton);
+		
+		createButton = new Button("Create");
+		createButton.setDisable(true);
+		editorOperationsBar.getChildren().add(createButton);
 		
 		updateButton = new Button("Update");
 		updateButton.setDisable(true);

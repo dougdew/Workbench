@@ -16,6 +16,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 import com.sforce.soap.enterprise.EnterpriseConnection;
+import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.enterprise.LoginResult;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
@@ -29,6 +30,7 @@ public class LoginController {
 		private boolean success;
 		private EnterpriseConnection eConnection;
 		private MetadataConnection mConnection;
+		private GetUserInfoResult userInfo;
 		
 		public SOAPLogHandler getLogHandler() {
 			return logHandler;
@@ -56,6 +58,13 @@ public class LoginController {
 		}
 		public void setMetadataConnection(MetadataConnection mConnection) {
 			this.mConnection = mConnection;
+		}
+		
+		public GetUserInfoResult getUserInfo() {
+			return userInfo;
+		}
+		public void setUserInfo(GetUserInfoResult userInfo) {
+			this.userInfo = userInfo;
 		}
 	}
 	
@@ -114,8 +123,9 @@ public class LoginController {
 	public LoginController(Main application) {
 		this.application = application;
 		createGraph();
+		/*
 		application.enterpriseConnection().addListener((o, oldValue, newValue) -> handleEnterpriseConnectionChanged());
-		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());
+		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());*/
 	}
 	
 	public Node getRoot() {
@@ -216,11 +226,13 @@ public class LoginController {
 			loginWorker.setOnSucceeded(es -> {
 				LoginWorkerResults loginResults = loginWorker.getValue();
 				if (loginResults.isSuccess()) {
+					application.apiVersion().set((new Double(version)).doubleValue());
+					application.orgId().set(loginResults.getUserInfo().getOrganizationName());
+					application.orgName().set(loginResults.getUserInfo().getOrganizationName());
 					application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
 					application.metadataConnection().set(loginResults.getMetadataConnection());
 					loginStatus.setFill(Color.GREEN);
 					loginLogoutButton.setText("Log Out");
-					application.apiVersion().set((new Double(version)).doubleValue());
 				}
 				else {
 					application.enterpriseConnection().set(null);
@@ -252,15 +264,15 @@ public class LoginController {
 					eConfig.setAuthEndpoint(serverUrl + apiVersion);
 					eConfig.setServiceEndpoint(serverUrl + apiVersion);
 					eConfig.setManualLogin(true);
+					
 					SOAPLogHandler logHandler = new SOAPLogHandler("LOGIN");
 					eConfig.addMessageHandler(logHandler);
 					results.setLogHandler(logHandler);
+					
 					EnterpriseConnection eConnection = new EnterpriseConnection(eConfig);
 					results.setEnterpriseConnection(eConnection);
 					
 					LoginResult loginResult = eConnection.login(userName, password);
-					
-					eConfig.clearMessageHandlers();
 					
 					eConnection.setSessionHeader(loginResult.getSessionId());
 					
@@ -268,6 +280,11 @@ public class LoginController {
 					mConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
 					mConfig.setSessionId(loginResult.getSessionId());
 					results.setMetadataConnection(new MetadataConnection(mConfig));
+					
+					GetUserInfoResult userInfo = eConnection.getUserInfo();
+					results.setUserInfo(userInfo);
+					
+					eConfig.clearMessageHandlers();
 					
 					results.setSuccess(true);
 				}
