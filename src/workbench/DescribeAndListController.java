@@ -74,11 +74,12 @@ public class DescribeAndListController {
 	
 	private AnchorPane root;
 	private HBox treeOperationsBar;
-	// TODO: Rename this
 	private TreeView<String> descriptionAndListsTree;
 	private TreeItem<String> descriptionAndListsTreeRoot;
 	private Button describeButton;
 	private Button listButton;
+	private Button readButton;
+	private Button deleteButton;
 	private Button cancelButton;
 	
 	public DescribeAndListController(Main application) {
@@ -113,6 +114,16 @@ public class DescribeAndListController {
 		listButton.setOnAction(e -> handleListButtonClicked(e));
 		treeOperationsBar.getChildren().add(listButton);
 		
+		readButton = new Button("Read");
+		readButton.setDisable(true);
+		readButton.setOnAction(e -> handleReadButtonClicked(e));
+		treeOperationsBar.getChildren().add(readButton);
+		
+		deleteButton = new Button("Delete");
+		deleteButton.setDisable(true);
+		deleteButton.setOnAction(e -> handleDeleteButtonClicked(e));
+		treeOperationsBar.getChildren().add(deleteButton);
+		
 		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
 		cancelButton.setOnAction(e -> handleCancelButtonClicked(e));
@@ -135,6 +146,8 @@ public class DescribeAndListController {
 		if (application.metadataConnection().get() == null) {
 			describeButton.setDisable(true);
 			listButton.setDisable(true);
+			readButton.setDisable(true);
+			deleteButton.setDisable(true);
 		}
 	}
 	
@@ -167,10 +180,14 @@ public class DescribeAndListController {
 		if (selectedItem == descriptionAndListsTree.getRoot()) {
 			describeButton.setDisable(false);
 			listButton.setDisable(true);
+			readButton.setDisable(true);
+			deleteButton.setDisable(true);
 		}
 		else if (selectedItem.getParent() == descriptionAndListsTree.getRoot()) {
 			describeButton.setDisable(true);
 			listButton.setDisable(false);
+			readButton.setDisable(true);
+			deleteButton.setDisable(true);
 			
 			DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
 			application.getPropertiesController().showPropertiesForType(dmo);
@@ -178,14 +195,15 @@ public class DescribeAndListController {
 		else {
 			describeButton.setDisable(true);
 			listButton.setDisable(true);
+			readButton.setDisable(false);
+			// TODO: Uncomment this line when delete is supported
+			//deleteButton.setDisable(false);
 			
 			String typeName = selectedItem.getParent().getValue();
 			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
 			String fileName = selectedItem.getValue();
 			FileProperties fp = fileMap.get(fileName);
 			application.getPropertiesController().showPropertiesForFile(fp);
-			// TOOD: Eliminate this
-			application.getEditorController().edit(typeName, fp.getFullName());
 		}
 	}
 	
@@ -267,6 +285,25 @@ public class DescribeAndListController {
 		
 		// TODO: Fix this to wait for cancel to complete
 		setButtonDisablesForTreeSelection();
+	}
+	
+	private void handleReadButtonClicked(ActionEvent e) {
+		
+		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
+		if (selectedItem == null) {
+			return;
+		}
+		
+		String typeName = selectedItem.getParent().getValue();
+		SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
+		String fileName = selectedItem.getValue();
+		FileProperties fp = fileMap.get(fileName);
+		
+		application.getEditorController().edit(typeName, fp.getFullName());
+	}
+	
+	private void handleDeleteButtonClicked(ActionEvent e) {
+		
 	}
 	
 	private Task<DescribeWorkerResults> createDescribeWorker() {

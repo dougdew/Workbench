@@ -104,9 +104,7 @@ public class EditorController {
 	
 	private AnchorPane root;
 	private Button createButton;
-	private Button readButton;
 	private Button updateButton;
-	private Button deleteButton;
 	private Button cancelButton;
 	private TabPane tabPane;
 	
@@ -150,7 +148,7 @@ public class EditorController {
 		tab.setOnClosed(e -> {
 			fileControllers.remove(tab.getText());
 			if (fileControllers.size() == 0) {
-				readButton.setDisable(true);
+				// TODO:
 			}
 		});
 		fileController.setTab(tab);
@@ -166,7 +164,6 @@ public class EditorController {
 			editor.setMetadata(m);
 			application.getLogController().log(readWorker.getValue().getLogHandler());
 			cancelButton.setDisable(true);
-			readButton.setDisable(false);
 		});	
 		fileController.setReadWorker(readWorker);
 		
@@ -175,7 +172,6 @@ public class EditorController {
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
 		
-		readButton.setDisable(true);
 		cancelButton.setDisable(false);
 		
 		new Thread(readWorker).start();
@@ -192,11 +188,6 @@ public class EditorController {
 		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
 		root.getChildren().add(editorOperationsBar);
 		
-		readButton = new Button("Read");
-		readButton.setDisable(true);
-		readButton.setOnAction(e -> handleReadButtonClicked(e));
-		editorOperationsBar.getChildren().add(readButton);
-		
 		createButton = new Button("Create");
 		createButton.setDisable(true);
 		editorOperationsBar.getChildren().add(createButton);
@@ -204,10 +195,6 @@ public class EditorController {
 		updateButton = new Button("Update");
 		updateButton.setDisable(true);
 		editorOperationsBar.getChildren().add(updateButton);
-		
-		deleteButton = new Button("Delete");
-		deleteButton.setDisable(true);
-		editorOperationsBar.getChildren().add(deleteButton);
 		
 		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
@@ -229,30 +216,8 @@ public class EditorController {
 		}
 		else {
 			createButton.setDisable(true);
-			readButton.setDisable(true);
 			updateButton.setDisable(true);
 		}
-	}
-	
-	private void handleReadButtonClicked(ActionEvent e) {
-		
-		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
-		FileController fileController = fileControllers.get(typeQualifiedName);
-		Task<ReadWorkerResults> readWorker = createReadWorker(fileController.getType(), fileController.getFullName());
-		readWorker.setOnSucceeded(es -> {
-			Metadata m = readWorker.getValue().getMetadata();
-			Editor editor = fileController.getEditor();
-			editor.setMetadata(m);
-			application.getLogController().log(readWorker.getValue().getLogHandler());
-			cancelButton.setDisable(true);
-			readButton.setDisable(false);
-		});	
-		fileController.setReadWorker(readWorker);
-		
-		readButton.setDisable(true);
-		cancelButton.setDisable(false);
-		
-		new Thread(readWorker).start();
 	}
 	
 	private void handleCancelButtonClicked(ActionEvent e) {
@@ -261,7 +226,6 @@ public class EditorController {
 		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
 		FileController fileController = fileControllers.get(typeQualifiedName);
 		fileController.getReadWorker().cancel();
-		readButton.setDisable(false);
 	}
 	
 	private Task<ReadWorkerResults> createReadWorker(String type, String fullName) {
