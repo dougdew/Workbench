@@ -16,6 +16,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 
+import com.sforce.soap.metadata.DeleteResult;
 import com.sforce.soap.metadata.DescribeMetadataObject;
 import com.sforce.soap.metadata.DescribeMetadataResult;
 import com.sforce.soap.metadata.FileProperties;
@@ -64,10 +65,31 @@ public class DescribeAndListController {
 		}
 	}
 	
+	private static class DeleteWorkerResults {
+		
+		private SOAPLogHandler logHandler;
+		private boolean success;
+		
+		public void setLogHandler(SOAPLogHandler logHandler) {
+			this.logHandler = logHandler;
+		}
+		public SOAPLogHandler getLogHandler() {
+			return logHandler;
+		}
+		
+		public void setSuccess(boolean success) {
+			this.success = success;
+		}
+		public boolean getSuccess() {
+			return success;
+		}
+	}
+	
 	private Main application;
 	
 	private Task<DescribeWorkerResults> describeWorker;
 	private Task<ListWorkerResults> listWorker;
+	private Task<DeleteWorkerResults> deleteWorker;
 	
 	private SortedMap<String, DescribeMetadataObject> metadataDescription;
 	private Map<String, SortedMap<String, FileProperties>> metadataLists = new TreeMap<>();
@@ -196,8 +218,7 @@ public class DescribeAndListController {
 			describeButton.setDisable(true);
 			listButton.setDisable(true);
 			readButton.setDisable(false);
-			// TODO: Uncomment this line when delete is supported
-			//deleteButton.setDisable(false);
+			deleteButton.setDisable(false);
 			
 			String typeName = selectedItem.getParent().getValue();
 			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
@@ -272,22 +293,11 @@ public class DescribeAndListController {
 		new Thread(listWorker).start();
 	}
 	
-	private void handleCancelButtonClicked(ActionEvent e) {
-		
-		cancelButton.setDisable(true);
-		
-		if (describeWorker != null) {
-			describeWorker.cancel(true);
-		}
-		if (listWorker != null) {
-			listWorker.cancel(true);
-		}
-		
-		// TODO: Fix this to wait for cancel to complete
-		setButtonDisablesForTreeSelection();
-	}
-	
 	private void handleReadButtonClicked(ActionEvent e) {
+		
+		// TODO: Disable read and delete buttons
+		// TODO: Enable notification that read has completed
+		// TODO: Enable read and delete buttons
 		
 		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 		if (selectedItem == null) {
@@ -304,6 +314,56 @@ public class DescribeAndListController {
 	
 	private void handleDeleteButtonClicked(ActionEvent e) {
 		
+		descriptionAndListsTree.setDisable(true);
+		readButton.setDisable(true);
+		deleteButton.setDisable(true);
+		
+		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
+		if (selectedItem == null) {
+			return;
+		}
+		
+		String typeName = selectedItem.getParent().getValue();
+		SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
+		String fileName = selectedItem.getValue();
+		FileProperties fp = fileMap.get(fileName);
+		
+		deleteWorker = createDeleteWorker(typeName, fp.getFullName());
+		deleteWorker.setOnSucceeded(es -> {
+			
+			boolean deleted = deleteWorker.getValue().getSuccess();
+			if (deleted) {
+				application.getEditorController().close(typeName, fp.getFullName());
+				// TODO: Set selection somewhere helpful
+				selectedItem.getParent().getChildren().remove(selectedItem);
+				fileMap.remove(fileName);
+			}
+			else {
+				deleteButton.setDisable(false);
+				readButton.setDisable(false);
+			}
+			
+			deleteWorker = null;
+			
+			descriptionAndListsTree.setDisable(false);
+		});
+		
+		new Thread(deleteWorker).start();
+	}
+	
+	private void handleCancelButtonClicked(ActionEvent e) {
+		
+		cancelButton.setDisable(true);
+		
+		if (describeWorker != null) {
+			describeWorker.cancel(true);
+		}
+		if (listWorker != null) {
+			listWorker.cancel(true);
+		}
+		
+		// TODO: Fix this to wait for cancel to complete
+		setButtonDisablesForTreeSelection();
 	}
 	
 	private Task<DescribeWorkerResults> createDescribeWorker() {
@@ -375,6 +435,38 @@ public class DescribeAndListController {
 				
 				return workerResults;
 			}
+		};
+	}
+	
+	private Task<DeleteWorkerResults> createDeleteWorker(String typeName, String fullName) {
+		
+		return new Task<DeleteWorkerResults>() {
+			
+			@Override
+			protected DeleteWorkerResults call() throws Exception {
+				
+				DeleteWorkerResults workerResults = new DeleteWorkerResults();
+				
+				try {
+					SOAPLogHandler logHandler = new SOAPLogHandler("DELETE");
+					application.metadataConnection().get().getConfig().addMessageHandler(logHandler);
+					workerResults.setLogHandler(logHandler);
+					
+					DeleteResult[] mdapiDelete = application.metadataConnection().get().deleteMetadata(typeName, new String[]{fullName});
+					if (mdapiDelete != null && mdapiDelete.length == 1 && mdapiDelete[0].getSuccess()) {
+						workerResults.setSuccess(true);
+					} 
+					
+					application.metadataConnection().get().getConfig().clearMessageHandlers();
+				}
+				catch (ConnectionException e) {
+					// TODO: Fix this
+					e.printStackTrace();
+				}
+				
+				return workerResults;
+			}
+			
 		};
 	}
 }

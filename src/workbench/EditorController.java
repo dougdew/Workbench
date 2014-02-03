@@ -132,7 +132,7 @@ public class EditorController {
 	
 	public void edit(String type, String fullName) {
 		
-		String typeQualifiedName = type + ":" + fullName;
+		String typeQualifiedName = createTypeQualifiedName(type, fullName);
 		
 		if (fileControllers.get(typeQualifiedName) != null) {
 			tabPane.getSelectionModel().select(fileControllers.get(typeQualifiedName).getTab());
@@ -146,10 +146,8 @@ public class EditorController {
 		Tab tab = new Tab();
 		tab.setText(typeQualifiedName);
 		tab.setOnClosed(e -> {
-			fileControllers.remove(tab.getText());
-			if (fileControllers.size() == 0) {
-				// TODO:
-			}
+			fileControllers.remove(typeQualifiedName);
+			// TODO: Set disables for buttons
 		});
 		fileController.setTab(tab);
 		
@@ -175,6 +173,21 @@ public class EditorController {
 		cancelButton.setDisable(false);
 		
 		new Thread(readWorker).start();
+	}
+	
+	public void close(String type, String fullName) {	
+		
+		String typeQualifiedName = createTypeQualifiedName(type, fullName);
+		FileController fileController = fileControllers.get(typeQualifiedName);
+		if (fileController == null) {
+			return;
+		}
+		
+		tabPane.getTabs().remove(fileController.getTab());
+		fileControllers.remove(typeQualifiedName);
+		
+		// TODO: Update button disables
+		// TODO: Special handling for zero remaining file controllers and tabs
 	}
 	
 	private void createGraph() {
@@ -226,6 +239,10 @@ public class EditorController {
 		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
 		FileController fileController = fileControllers.get(typeQualifiedName);
 		fileController.getReadWorker().cancel();
+	}
+	
+	private String createTypeQualifiedName(String type, String fullName) {
+		return type + ":" + fullName;
 	}
 	
 	private Task<ReadWorkerResults> createReadWorker(String type, String fullName) {
