@@ -165,7 +165,10 @@ public class DescribeAndListController {
 	}
 	
 	private void handleMetadataConnectionChanged() {
-		if (application.metadataConnection().get() == null) {
+		if (application.metadataConnection().get() != null) {
+			setButtonDisablesForTreeSelection();
+		}
+		else {
 			describeButton.setDisable(true);
 			listButton.setDisable(true);
 			readButton.setDisable(true);
@@ -199,15 +202,22 @@ public class DescribeAndListController {
 		if (selectedItem == null) {
 			return;
 		}
+		
+		boolean connected = application.metadataConnection().get() != null;
+		
 		if (selectedItem == descriptionAndListsTree.getRoot()) {
-			describeButton.setDisable(false);
+			if (connected) {
+				describeButton.setDisable(false);
+			}
 			listButton.setDisable(true);
 			readButton.setDisable(true);
 			deleteButton.setDisable(true);
 		}
 		else if (selectedItem.getParent() == descriptionAndListsTree.getRoot()) {
 			describeButton.setDisable(true);
-			listButton.setDisable(false);
+			if (connected) {
+				listButton.setDisable(false);
+			}
 			readButton.setDisable(true);
 			deleteButton.setDisable(true);
 			
@@ -217,8 +227,10 @@ public class DescribeAndListController {
 		else {
 			describeButton.setDisable(true);
 			listButton.setDisable(true);
-			readButton.setDisable(false);
-			deleteButton.setDisable(false);
+			if (connected) {
+				readButton.setDisable(false);
+				deleteButton.setDisable(false);
+			}
 			
 			String typeName = selectedItem.getParent().getValue();
 			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
