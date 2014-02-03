@@ -14,7 +14,7 @@ import com.sforce.soap.metadata.Metadata;
 
 public class CustomObjectEditor implements Editor {
 
-	private static final String GRAPH_FILE = "CustomObject.fxml";
+	private static final String GRAPH_FILE = "CustomObjectEditor.fxml";
 	private static final String TYPE = "CustomObject";
 	private static final String FILE_EXTENSION = "object";
 	

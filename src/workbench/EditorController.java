@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
@@ -197,25 +198,7 @@ public class EditorController {
 		
 		readButton = new Button("Read");
 		readButton.setDisable(true);
-		readButton.setOnAction(e -> {
-			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
-			FileController fileController = fileControllers.get(typeQualifiedName);
-			Task<ReadWorkerResults> readWorker = createReadWorker(fileController.getType(), fileController.getFullName());
-			readWorker.setOnSucceeded(es -> {
-				Metadata m = readWorker.getValue().getMetadata();
-				Editor editor = fileController.getEditor();
-				editor.setMetadata(m);
-				application.getLogController().log(readWorker.getValue().getLogHandler());
-				cancelButton.setDisable(true);
-				readButton.setDisable(false);
-			});	
-			fileController.setReadWorker(readWorker);
-			
-			readButton.setDisable(true);
-			cancelButton.setDisable(false);
-			
-			new Thread(readWorker).start();
-		});
+		readButton.setOnAction(e -> handleReadButtonClicked(e));
 		editorOperationsBar.getChildren().add(readButton);
 		
 		updateButton = new Button("Update");
@@ -228,13 +211,7 @@ public class EditorController {
 		
 		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
-		cancelButton.setOnAction(e -> {
-			cancelButton.setDisable(true);
-			String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
-			FileController fileController = fileControllers.get(typeQualifiedName);
-			fileController.getReadWorker().cancel();
-			readButton.setDisable(false);
-		});
+		cancelButton.setOnAction(e -> handleCancelButtonClicked(e));
 		editorOperationsBar.getChildren().add(cancelButton);
 		
 		tabPane = new TabPane();
@@ -257,9 +234,39 @@ public class EditorController {
 		}
 	}
 	
+	private void handleReadButtonClicked(ActionEvent e) {
+		
+		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
+		FileController fileController = fileControllers.get(typeQualifiedName);
+		Task<ReadWorkerResults> readWorker = createReadWorker(fileController.getType(), fileController.getFullName());
+		readWorker.setOnSucceeded(es -> {
+			Metadata m = readWorker.getValue().getMetadata();
+			Editor editor = fileController.getEditor();
+			editor.setMetadata(m);
+			application.getLogController().log(readWorker.getValue().getLogHandler());
+			cancelButton.setDisable(true);
+			readButton.setDisable(false);
+		});	
+		fileController.setReadWorker(readWorker);
+		
+		readButton.setDisable(true);
+		cancelButton.setDisable(false);
+		
+		new Thread(readWorker).start();
+	}
+	
+	private void handleCancelButtonClicked(ActionEvent e) {
+		
+		cancelButton.setDisable(true);
+		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
+		FileController fileController = fileControllers.get(typeQualifiedName);
+		fileController.getReadWorker().cancel();
+		readButton.setDisable(false);
+	}
+	
 	private Task<ReadWorkerResults> createReadWorker(String type, String fullName) {
 		
-		return new Task<ReadWorkerResults>() {
+		Task<ReadWorkerResults> worker = new Task<ReadWorkerResults>() {
 			
 			@Override
 			protected ReadWorkerResults call() throws Exception {
@@ -285,5 +292,7 @@ public class EditorController {
 				return results;
 			}
 		};
+		
+		return worker;
 	}
 }
