@@ -71,14 +71,9 @@ public class LoginController {
 	private static final Map<String, String> SERVERS;
 	static {
 		SERVERS = new HashMap<String, String>();
-		SERVERS.put("localhost", "http://ddew-wsl.internal.salesforce.com:8080/services/Soap/c/");
-		SERVERS.put("Blitz01 NA1", "https://na1-blitz01.soma.salesforce.com/services/Soap/u/");
-		SERVERS.put("Blitz01 NA9", "https://na9-blitz01.soma.salesforce.com/services/Soap/u/");
-		SERVERS.put("Blitz01 AP1", "https://ap1-blitz01.soma.salesforce.com/services/Soap/u/");
-		SERVERS.put("Blitz01 CS0", "https://cs0-blitz01.soma.salesforce.com/services/Soap/u/");
-		SERVERS.put("Blitz02 NA1", "https://na1-blitz02.soma.salesforce.com/services/Soap/u/");
-		SERVERS.put("Blitz02 AP1", "https://ap1-blitz02.soma.salesforce.com/services/Soap/u/");
-		SERVERS.put("Blitz02 CS0", "https://cs0-blitz02.soma.salesforce.com/services/Soap/u/");
+		// Add your servers here
+		// Entries should be of the form:
+		// SERVERS.put("server nick name", "http://host:port/services/Soap/c/");
 	}
 	
 	private static final String[] VERSIONS = {
