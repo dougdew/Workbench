@@ -22,6 +22,7 @@ public class Main extends Application {
 	
 	private static final String TITLE = "Workbench";
 	private static final String CSS_FILE = "application.css";
+	private static final String METADATA_NAMESPACE = "http://soap.sforce.com/2006/04/metadata";
 	
 	private LoginController loginController;
 	private DescribeAndListController describeAndListController;
@@ -34,6 +35,10 @@ public class Main extends Application {
 	private DoubleProperty apiVersionProperty = new SimpleDoubleProperty();
 	private StringProperty orgIdProperty = new SimpleStringProperty();
 	private StringProperty orgNameProperty = new SimpleStringProperty();
+	
+	public static String getMetadataNamespace() {
+		return METADATA_NAMESPACE;
+	}
 	
 	public static void main(String[] args) {
 		launch(args);
