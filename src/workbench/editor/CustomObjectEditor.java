@@ -2,6 +2,8 @@ package workbench.editor;
 
 import java.io.IOException;
 
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -17,6 +19,8 @@ public class CustomObjectEditor implements Editor {
 	private static final String GRAPH_FILE = "CustomObjectEditor.fxml";
 	private static final String TYPE = "CustomObject";
 	private static final String FILE_EXTENSION = "object";
+	
+	private BooleanProperty dirtyProperty = new SimpleBooleanProperty();
 	
 	public static String getType() {
 		return TYPE;
@@ -62,6 +66,18 @@ public class CustomObjectEditor implements Editor {
 		if (metadata != null) {
 			setUIFromMetadata();
 		}
+	}
+	
+	public BooleanProperty dirty() {
+		return dirtyProperty;
+	}
+	
+	public void lock() {
+		// TODO:
+	}
+	
+	public void unlock() {
+		// TODO:
 	}
 	
 	private void loadGraph() {

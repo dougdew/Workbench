@@ -19,6 +19,7 @@ import javafx.scene.layout.HBox;
 
 import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
+import com.sforce.soap.metadata.SaveResult;
 import com.sforce.ws.ConnectionException;
 
 import workbench.editor.Editor;
@@ -46,6 +47,26 @@ public class EditorController {
 		}
 	}
 	
+	private static class UpdateWorkerResults {
+		
+		private SOAPLogHandler logHandler;
+		boolean success;
+		
+		public void setLogHandler(SOAPLogHandler logHandler) {
+			this.logHandler = logHandler;
+		}
+		public SOAPLogHandler getLogHandler() {
+			return logHandler;
+		}
+		
+		public void setSuccess(boolean success) {
+			this.success = success;
+		}
+		public boolean getSuccess() {
+			return success;
+		}
+	}
+	
 	private static class FileController {
 		
 		private String type;
@@ -54,6 +75,7 @@ public class EditorController {
 		private Editor editor;
 		private Metadata metadata;
 		private Task<ReadWorkerResults> readWorker;
+		private Task<UpdateWorkerResults> updateWorker;
 		
 		public String getType() {
 			return type;
@@ -96,6 +118,13 @@ public class EditorController {
 		public void setReadWorker(Task<ReadWorkerResults> readWorker) {
 			this.readWorker = readWorker;
 		}
+		
+		public Task<UpdateWorkerResults> getUpdateWorker() {
+			return updateWorker;
+		}
+		public void setUpdateWorker(Task<UpdateWorkerResults> updateWorker) {
+			this.updateWorker = updateWorker;
+		}
 	}
 	
 	private Main application;
@@ -128,6 +157,8 @@ public class EditorController {
 				onClosedHandler.handle(null);
 			}
 		}
+		
+		// TODO: Special handling for zero remaining file controllers and tabs
 	}
 	
 	public void edit(String type, String fullName) {
@@ -145,18 +176,21 @@ public class EditorController {
 		
 		Tab tab = new Tab();
 		tab.setText(typeQualifiedName);
+		tab.setOnSelectionChanged(e -> setButtonDisablesForSelectedTab());
 		tab.setOnClosed(e -> {
 			fileControllers.remove(typeQualifiedName);
-			// TODO: Set disables for buttons
+			setButtonDisablesForSelectedTab();
 		});
 		fileController.setTab(tab);
 		
 		final Editor editor = EditorFactory.createEditor(type);
+		editor.dirty().addListener((o, oldValue, newValue) -> setButtonDisablesForSelectedTab());
 		tab.setContent(editor.getRoot());
 		fileController.setEditor(editor);
 		
 		Task<ReadWorkerResults> readWorker = createReadWorker(type, fullName);
 		readWorker.setOnSucceeded(e -> {
+			fileController.setReadWorker(null);
 			Metadata m = readWorker.getValue().getMetadata();
 			fileController.setMetadata(m);
 			editor.setMetadata(m);
@@ -169,6 +203,8 @@ public class EditorController {
 		
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
+		
+		setButtonDisablesForSelectedTab();
 		
 		cancelButton.setDisable(false);
 		
@@ -186,7 +222,8 @@ public class EditorController {
 		tabPane.getTabs().remove(fileController.getTab());
 		fileControllers.remove(typeQualifiedName);
 		
-		// TODO: Update button disables
+		setButtonDisablesForSelectedTab();
+		
 		// TODO: Special handling for zero remaining file controllers and tabs
 	}
 	
@@ -207,6 +244,7 @@ public class EditorController {
 		
 		updateButton = new Button("Update");
 		updateButton.setDisable(true);
+		updateButton.setOnAction(e -> handleUpdateButtonClicked(e));
 		editorOperationsBar.getChildren().add(updateButton);
 		
 		cancelButton = new Button("Cancel");
@@ -233,12 +271,70 @@ public class EditorController {
 		}
 	}
 	
+	private void handleUpdateButtonClicked(ActionEvent e) {
+		
+		if (application.metadataConnection().get() == null) {
+			return;
+		}
+		
+		createButton.setDisable(true);
+		updateButton.setDisable(true);
+		
+		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
+		FileController fileController = fileControllers.get(typeQualifiedName);
+		Editor editor = fileController.getEditor();
+		
+		if (!editor.dirty().get()) {
+			return;
+		}
+		
+		editor.lock();
+		Metadata m = editor.getMetadata();
+		
+		Task<UpdateWorkerResults> updateWorker = createUpdateWorker(m);
+		updateWorker.setOnSucceeded(es -> {
+			fileController.setUpdateWorker(null);
+			application.getLogController().log(updateWorker.getValue().getLogHandler());
+			cancelButton.setDisable(true);
+			boolean updated = updateWorker.getValue().getSuccess();
+			if (updated) {
+				editor.dirty().set(false);
+			}
+			editor.unlock();
+			setButtonDisablesForSelectedTab();
+		});
+		fileController.setUpdateWorker(updateWorker);
+		
+		cancelButton.setDisable(false);
+		
+		new Thread(updateWorker).start();
+	}
+	
 	private void handleCancelButtonClicked(ActionEvent e) {
 		
 		cancelButton.setDisable(true);
 		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
 		FileController fileController = fileControllers.get(typeQualifiedName);
 		fileController.getReadWorker().cancel();
+	}
+	
+	private void setButtonDisablesForSelectedTab() {
+		
+		if (tabPane.getTabs().size() == 0) {
+			updateButton.setDisable(true);
+		}
+		else {
+			Tab tab = tabPane.getSelectionModel().getSelectedItem();
+			String typeQualifiedName = tab.getText();
+			FileController fileController = fileControllers.get(typeQualifiedName);
+			Editor editor = fileController.getEditor();
+			if (editor.dirty().get()) {
+				updateButton.setDisable(false);
+			}
+			else {
+				updateButton.setDisable(true);
+			}
+		}
 	}
 	
 	private String createTypeQualifiedName(String type, String fullName) {
@@ -263,6 +359,38 @@ public class EditorController {
 					Metadata[] records = conn.readMetadata(type, new String[]{fullName}).getRecords();
 					if (records != null && records.length == 1) {
 						results.setMetadata(records[0]);
+					}
+					conn.getConfig().clearMessageHandlers();
+				}
+				catch (ConnectionException e) {
+					e.printStackTrace();
+				}
+				
+				return results;
+			}
+		};
+		
+		return worker;
+	}
+	
+	private Task<UpdateWorkerResults> createUpdateWorker(Metadata m) {
+		
+		Task<UpdateWorkerResults> worker = new Task<UpdateWorkerResults>() {
+			
+			@Override
+			protected UpdateWorkerResults call() throws Exception {
+				
+				UpdateWorkerResults results = new UpdateWorkerResults();
+				
+				try {
+					MetadataConnection conn = application.metadataConnection().get();
+					SOAPLogHandler logHandler = new SOAPLogHandler("UPDATE: " + m.getFullName());
+					conn.getConfig().addMessageHandler(logHandler);
+					results.setLogHandler(logHandler);
+					
+					SaveResult[] mdapiUpdate = conn.updateMetadata(new Metadata[]{m});
+					if (mdapiUpdate != null && mdapiUpdate.length == 1) {
+						results.setSuccess(mdapiUpdate[0].isSuccess());
 					}
 					conn.getConfig().clearMessageHandlers();
 				}
