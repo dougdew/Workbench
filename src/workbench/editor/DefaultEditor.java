@@ -51,6 +51,14 @@ public class DefaultEditor implements Editor {
 		dirtyProperty.set(false);
 	}
 	
+	public String getMetadataAsXml() {
+		return root.getText();
+	}
+	
+	public void setMetadataAsXml(String xml) {
+		// TODO:
+	}
+	
 	public BooleanProperty dirty() {
 		return dirtyProperty;
 	}
@@ -67,7 +75,7 @@ public class DefaultEditor implements Editor {
 		
 		root = new TextArea();
 		root.setEditable(true);
-		root.setOnKeyTyped(e -> dirtyProperty.set(true));
+		root.textProperty().addListener(e -> dirtyProperty.set(true));
 	}
 	
 	private void setUIFromMetadata() {

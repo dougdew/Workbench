@@ -1,5 +1,7 @@
 package workbench;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -21,11 +23,44 @@ import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.soap.metadata.SaveResult;
 import com.sforce.ws.ConnectionException;
+import com.sforce.ws.bind.TypeInfo;
+import com.sforce.ws.bind.TypeMapper;
+import com.sforce.ws.parser.PullParserException;
+import com.sforce.ws.parser.XmlInputStream;
+import com.sforce.ws.wsdl.Constants;
 
 import workbench.editor.Editor;
 import workbench.editor.EditorFactory;
 
 public class EditorController {
+	
+	private static class CreateWorkerResults {
+		
+		private SOAPLogHandler logHandler;
+		private Metadata metadata;
+		private boolean success;
+		
+		public void setLogHandler(SOAPLogHandler logHandler) {
+			this.logHandler = logHandler;
+		}
+		public SOAPLogHandler getLogHandler() {
+			return logHandler;
+		}
+		
+		public void setMetadata(Metadata metadata) {
+			this.metadata = metadata;
+		}
+		public Metadata getMetadata() {
+			return metadata;
+		}
+		
+		public void setSuccess(boolean success) {
+			this.success = success;
+		}
+		public boolean getSuccess() {
+			return success;
+		}
+	}
 	
 	private static class ReadWorkerResults {
 		
@@ -75,6 +110,7 @@ public class EditorController {
 		private Editor editor;
 		private Metadata metadata;
 		private Task<ReadWorkerResults> readWorker;
+		private Task<CreateWorkerResults> createWorker;
 		private Task<UpdateWorkerResults> updateWorker;
 		
 		public String getType() {
@@ -119,19 +155,33 @@ public class EditorController {
 			this.readWorker = readWorker;
 		}
 		
+		public Task<CreateWorkerResults> getCreateWorker() {
+			return createWorker;
+		}
+		public void setCreateWorker(Task<CreateWorkerResults> createWorker) {
+			this.createWorker = createWorker;
+		}
+		
 		public Task<UpdateWorkerResults> getUpdateWorker() {
 			return updateWorker;
 		}
 		public void setUpdateWorker(Task<UpdateWorkerResults> updateWorker) {
 			this.updateWorker = updateWorker;
 		}
+		
+		public boolean isNew() {
+			return metadata == null;
+		}
 	}
+	
+	private static int newFileCounter = 1;
 	
 	private Main application;
 	
 	private Map<String, FileController> fileControllers = new HashMap<String, FileController>();
 	
 	private AnchorPane root;
+	private Button newButton;
 	private Button createButton;
 	private Button updateButton;
 	private Button cancelButton;
@@ -238,8 +288,13 @@ public class EditorController {
 		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
 		root.getChildren().add(editorOperationsBar);
 		
+		newButton = new Button("New");
+		newButton.setOnAction(e -> handleNewButtonClicked(e));
+		editorOperationsBar.getChildren().add(newButton);
+		
 		createButton = new Button("Create");
 		createButton.setDisable(true);
+		createButton.setOnAction(e -> handleCreateButtonClicked(e));
 		editorOperationsBar.getChildren().add(createButton);
 		
 		updateButton = new Button("Update");
@@ -269,6 +324,82 @@ public class EditorController {
 			createButton.setDisable(true);
 			updateButton.setDisable(true);
 		}
+	}
+	
+	private void handleNewButtonClicked(ActionEvent e) {
+		
+		String newFileName = "New " + newFileCounter;
+		newFileCounter++;
+		
+		final FileController fileController = new FileController();
+		
+		Tab tab = new Tab();
+		tab.setText(newFileName);
+		tab.setOnSelectionChanged(es -> setButtonDisablesForSelectedTab());
+		tab.setOnClosed(ec -> {
+			// TODO: Remember to add logic to change the handler to use real file name after
+			// create is completed.
+			fileControllers.remove(newFileName);
+			setButtonDisablesForSelectedTab();
+		});
+		fileController.setTab(tab);
+		
+		// TODO: Enable editor factory to handle null type
+		final Editor editor = EditorFactory.createEditor(null);
+		editor.dirty().addListener((o, oldValue, newValue) -> setButtonDisablesForSelectedTab());
+		tab.setContent(editor.getRoot());
+		fileController.setEditor(editor);
+		
+		fileControllers.put(newFileName, fileController);
+		
+		tabPane.getTabs().add(tab);
+		tabPane.getSelectionModel().select(tab);
+		
+		setButtonDisablesForSelectedTab();
+	}
+	
+	private void handleCreateButtonClicked(ActionEvent e) {
+		
+		if (application.metadataConnection().get() == null) {
+			return;
+		}
+		
+		createButton.setDisable(true);
+		updateButton.setDisable(true);
+		
+		String newFileName = tabPane.getSelectionModel().getSelectedItem().getText();
+		FileController fileController = fileControllers.get(newFileName);
+		Editor editor = fileController.getEditor();
+		
+		if (!fileController.isNew() || !editor.dirty().get()) {
+			return;
+		}
+		
+		editor.lock();
+		String xml = editor.getMetadataAsXml();
+		
+		Task<CreateWorkerResults> createWorker = createCreateWorker(xml);
+		createWorker.setOnSucceeded(es -> {
+			fileController.setCreateWorker(null);
+			application.getLogController().log(createWorker.getValue().getLogHandler());
+			cancelButton.setDisable(true);
+			boolean created = createWorker.getValue().getSuccess();
+			if (created) {
+				fileControllers.remove(newFileName);
+				Metadata metadata = createWorker.getValue().getMetadata();
+				String typeQualifiedName = createTypeQualifiedName(metadata.getClass().getSimpleName(), metadata.getFullName());
+				fileController.getTab().setText(typeQualifiedName);
+				fileControllers.put(typeQualifiedName, fileController);
+				editor.setMetadata(metadata);
+			}
+			editor.unlock();
+			setButtonDisablesForSelectedTab();
+		});
+		fileController.setCreateWorker(createWorker);
+		
+		cancelButton.setDisable(false);
+		
+		new Thread(createWorker).start();
 	}
 	
 	private void handleUpdateButtonClicked(ActionEvent e) {
@@ -313,9 +444,17 @@ public class EditorController {
 	private void handleCancelButtonClicked(ActionEvent e) {
 		
 		cancelButton.setDisable(true);
-		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
-		FileController fileController = fileControllers.get(typeQualifiedName);
-		fileController.getReadWorker().cancel();
+		String fileName = tabPane.getSelectionModel().getSelectedItem().getText();
+		FileController fileController = fileControllers.get(fileName);
+		if (fileController.getReadWorker() != null) {
+			fileController.getReadWorker().cancel();
+		}
+		if (fileController.getCreateWorker() != null) {
+			fileController.getCreateWorker().cancel();
+		}
+		if (fileController.getUpdateWorker() != null) {
+			fileController.getUpdateWorker().cancel();
+		}
 	}
 	
 	private void setButtonDisablesForSelectedTab() {
@@ -324,21 +463,84 @@ public class EditorController {
 			updateButton.setDisable(true);
 		}
 		else {
+			boolean connected = application.metadataConnection().get() != null;
+			
 			Tab tab = tabPane.getSelectionModel().getSelectedItem();
-			String typeQualifiedName = tab.getText();
-			FileController fileController = fileControllers.get(typeQualifiedName);
+			String fileName = tab.getText();
+			FileController fileController = fileControllers.get(fileName);
 			Editor editor = fileController.getEditor();
-			if (editor.dirty().get()) {
-				updateButton.setDisable(false);
+			if (fileController.isNew()) {
+				if (editor.dirty().get() && connected) {
+					createButton.setDisable(false);
+				}
+				else {
+					createButton.setDisable(true);
+				}
+				updateButton.setDisable(true);
 			}
 			else {
-				updateButton.setDisable(true);
+				if (editor.dirty().get() && connected) {
+					updateButton.setDisable(false);
+				}
+				else {
+					updateButton.setDisable(true);
+				}
+				createButton.setDisable(true);
 			}
 		}
 	}
 	
 	private String createTypeQualifiedName(String type, String fullName) {
 		return type + ":" + fullName;
+	}
+	
+	private Task<CreateWorkerResults> createCreateWorker(String xml) {
+		
+		Task<CreateWorkerResults> worker = new Task<CreateWorkerResults>() {
+			
+			@Override
+			protected CreateWorkerResults call() throws Exception {
+			
+				CreateWorkerResults results = new CreateWorkerResults();
+				
+				try {
+					XmlInputStream xin = new XmlInputStream();
+					xin.setInput(new ByteArrayInputStream(xml.getBytes(Charset.forName("UTF-8"))), "UTF-8");
+					
+					TypeMapper mapper = new TypeMapper();
+					TypeInfo typeInfo = new TypeInfo(Main.getMetadataNamespace(), 
+												     "Metadata", 
+												     Main.getMetadataNamespace(), 
+												     "Metadata", 
+												     0, 
+												     1, 
+												     true);
+					xin.peekTag();
+					Metadata metadata = (Metadata)mapper.readObject(xin, typeInfo, Metadata.class);
+					results.setMetadata(metadata);
+					
+					MetadataConnection conn = application.metadataConnection().get();
+					SOAPLogHandler logHandler = new SOAPLogHandler("CREATE: ");
+					conn.getConfig().addMessageHandler(logHandler);
+					results.setLogHandler(logHandler);
+					
+					SaveResult[] mdapiCreate = conn.createMetadata(new Metadata[]{metadata});
+					if (mdapiCreate != null && mdapiCreate.length == 1) {
+						results.setSuccess(mdapiCreate[0].isSuccess());
+						// TODO: Add error reporting
+					}
+					
+					conn.getConfig().clearMessageHandlers();
+				}
+				catch (ConnectionException e) {
+					e.printStackTrace();
+				}
+				
+				return results;
+			}
+		};
+		
+		return worker;
 	}
 	
 	private Task<ReadWorkerResults> createReadWorker(String type, String fullName) {

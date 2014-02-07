@@ -68,6 +68,15 @@ public class CustomObjectEditor implements Editor {
 		}
 	}
 	
+	public String getMetadataAsXml() {
+		// TODO:
+		return null;
+	}
+	
+	public void setMetadataAsXml(String xml) {
+		// TODO:
+	}
+	
 	public BooleanProperty dirty() {
 		return dirtyProperty;
 	}

@@ -12,6 +12,9 @@ public interface Editor {
 	Metadata getMetadata();
 	void setMetadata(Metadata metadata);
 	
+	String getMetadataAsXml();
+	void setMetadataAsXml(String xml);
+	
 	BooleanProperty dirty();
 	
 	// TODO: Fix this. Should probably copy the metadata
