@@ -102,18 +102,18 @@ public class Main extends Application {
 		// BEGIN LOGIN PANE
 		LoginController loginController = new LoginController(this);
 		Node loginGraphRoot = loginController.getRoot();
-		AnchorPane.setTopAnchor(loginGraphRoot, 10.0);
-		AnchorPane.setLeftAnchor(loginGraphRoot, 10.0);
-		AnchorPane.setRightAnchor(loginGraphRoot, 10.0);
+		AnchorPane.setTopAnchor(loginGraphRoot, 0.0);
+		AnchorPane.setLeftAnchor(loginGraphRoot, 0.0);
+		AnchorPane.setRightAnchor(loginGraphRoot, 0.0);
 		root.getChildren().add(loginGraphRoot);
 		
 		// BEGIN MAIN SPLIT PANE
 		SplitPane mainSplitPane = new SplitPane();
 		mainSplitPane.setDividerPosition(0, 0.35);
-		AnchorPane.setTopAnchor(mainSplitPane, 50.0);
-		AnchorPane.setBottomAnchor(mainSplitPane, 10.0);
-		AnchorPane.setLeftAnchor(mainSplitPane, 10.0);
-		AnchorPane.setRightAnchor(mainSplitPane, 10.0);
+		AnchorPane.setTopAnchor(mainSplitPane, 38.0);
+		AnchorPane.setBottomAnchor(mainSplitPane, 0.0);
+		AnchorPane.setLeftAnchor(mainSplitPane, 0.0);
+		AnchorPane.setRightAnchor(mainSplitPane, 0.0);
 		root.getChildren().add(mainSplitPane);
 		AnchorPane mainLeftPane = new AnchorPane();
 		AnchorPane mainRightPane = new AnchorPane();

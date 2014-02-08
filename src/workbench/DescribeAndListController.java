@@ -7,14 +7,13 @@ import java.util.TreeMap;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ToolBar;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
 
 import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.metadata.DeleteResult;
@@ -213,7 +212,7 @@ public class DescribeAndListController {
 	private Map<String, SortedMap<String, FileProperties>> metadataLists = new TreeMap<>();
 	
 	private AnchorPane root;
-	private HBox treeOperationsBar;
+	private ToolBar toolBar;
 	private TreeView<String> descriptionAndListsTree;
 	private TreeItem<String> descriptionAndListsTreeRoot;
 	private Button describeButton;
@@ -237,40 +236,39 @@ public class DescribeAndListController {
 		
 		root = new AnchorPane();
 		
-		treeOperationsBar = new HBox();
-		treeOperationsBar.setAlignment(Pos.BASELINE_CENTER);
-		AnchorPane.setTopAnchor(treeOperationsBar, 6.0);
-		AnchorPane.setLeftAnchor(treeOperationsBar, 0.0);
-		AnchorPane.setRightAnchor(treeOperationsBar, 0.0);
-		root.getChildren().add(treeOperationsBar);
+		toolBar = new ToolBar();
+		AnchorPane.setTopAnchor(toolBar, 0.0);
+		AnchorPane.setLeftAnchor(toolBar, 0.0);
+		AnchorPane.setRightAnchor(toolBar, 0.0);
+		root.getChildren().add(toolBar);
 			
 		describeButton = new Button("Describe");
 		describeButton.setDisable(true);
 		describeButton.setOnAction(e -> handleDescribeButtonClicked(e));
-		treeOperationsBar.getChildren().add(describeButton);
+		toolBar.getItems().add(describeButton);
 		
 		listButton = new Button("List");
 		listButton.setDisable(true);
 		listButton.setOnAction(e -> handleListButtonClicked(e));
-		treeOperationsBar.getChildren().add(listButton);
+		toolBar.getItems().add(listButton);
 		
 		readButton = new Button("Read");
 		readButton.setDisable(true);
 		readButton.setOnAction(e -> handleReadButtonClicked(e));
-		treeOperationsBar.getChildren().add(readButton);
+		toolBar.getItems().add(readButton);
 		
 		deleteButton = new Button("Delete");
 		deleteButton.setDisable(true);
 		deleteButton.setOnAction(e -> handleDeleteButtonClicked(e));
-		treeOperationsBar.getChildren().add(deleteButton);
+		toolBar.getItems().add(deleteButton);
 		
 		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
-		treeOperationsBar.getChildren().add(cancelButton);
+		toolBar.getItems().add(cancelButton);
 		
 		descriptionAndListsTree = new TreeView<>();
 		descriptionAndListsTree.setOnMouseClicked(e -> handleTreeItemClicked(e));
-		AnchorPane.setTopAnchor(descriptionAndListsTree, 40.0);
+		AnchorPane.setTopAnchor(descriptionAndListsTree, 38.0);
 		AnchorPane.setBottomAnchor(descriptionAndListsTree, 0.0);
 		AnchorPane.setLeftAnchor(descriptionAndListsTree, 0.0);
 		AnchorPane.setRightAnchor(descriptionAndListsTree, 0.0);
@@ -340,9 +338,6 @@ public class DescribeAndListController {
 			}
 			readButton.setDisable(true);
 			deleteButton.setDisable(true);
-			
-			//DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
-			//application.getPropertiesController().showPropertiesForType(dmo);
 		}
 		else {
 			describeButton.setDisable(true);
@@ -351,12 +346,6 @@ public class DescribeAndListController {
 				readButton.setDisable(false);
 				deleteButton.setDisable(false);
 			}
-			/*
-			String typeName = selectedItem.getParent().getValue();
-			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
-			String fileName = selectedItem.getValue();
-			FileProperties fp = fileMap.get(fileName);
-			application.getPropertiesController().showPropertiesForFile(fp);*/
 		}
 	}
 	

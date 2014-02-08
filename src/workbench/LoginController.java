@@ -5,13 +5,12 @@ import java.util.Map;
 
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.HBox;
+import javafx.scene.control.ToolBar;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
@@ -161,7 +160,7 @@ public class LoginController {
 	
 	private Main application;
 	
-	private HBox root;
+	private ToolBar root;
 	private Rectangle loginStatus;	
 	private Button loginLogoutButton;
 	private ChoiceBox<String> serverBox;
@@ -196,9 +195,7 @@ public class LoginController {
 	
 	private void createGraph() {
 
-		root = new HBox();
-		root.setAlignment(Pos.BASELINE_CENTER);
-		root.setSpacing(5.0);
+		root = new ToolBar();
 		
 		loginStatus = new Rectangle(10, 10);
 		loginStatus.setFill(Color.RED);
@@ -206,29 +203,29 @@ public class LoginController {
 		loginLogoutButton = new Button("Log In");
 		loginLogoutButton.setGraphic(loginStatus);
 		loginLogoutButton.setOnAction(e -> handleLoginLogoutButtonPressed(e));
-		root.getChildren().add(loginLogoutButton);
+		root.getItems().add(loginLogoutButton);
 		
 		serverBox = new ChoiceBox<>();
 		for (String server : SERVERS.keySet()) {
 			serverBox.getItems().add(server);
 		}
 		serverBox.getSelectionModel().select(0);
-		root.getChildren().add(serverBox);
+		root.getItems().add(serverBox);
 		
 		versionBox = new ChoiceBox<>();
 		for (String version : VERSIONS) {
 			versionBox.getItems().add(version);
 		}
 		versionBox.getSelectionModel().select(0);
-		root.getChildren().add(versionBox);
+		root.getItems().add(versionBox);
 		
 		userField = new TextField();
 		userField.setPromptText("User Name");
-		root.getChildren().add(userField);
+		root.getItems().add(userField);
 		
 		passwordField = new PasswordField();
 		passwordField.setPromptText("Password");
-		root.getChildren().add(passwordField);
+		root.getItems().add(passwordField);
 	}
 	
 	private void handleLoginLogoutButtonPressed(ActionEvent e) {

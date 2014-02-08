@@ -11,12 +11,11 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
 import javafx.event.ActionEvent;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.ToolBar;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
 
 import com.sforce.soap.enterprise.GetUserInfoResult;
 
@@ -31,7 +30,7 @@ public class LogController {
 	private Main application;
 	
 	private AnchorPane root;
-	private HBox editorOperationsBar;
+	private ToolBar toolBar;
 	private Button clearButton;
 	private TextArea textArea;
 	
@@ -61,20 +60,19 @@ public class LogController {
 		
 		root = new AnchorPane();
 		
-		editorOperationsBar = new HBox();
-		editorOperationsBar.setAlignment(Pos.BASELINE_CENTER);
-		AnchorPane.setTopAnchor(editorOperationsBar, 6.0);
-		AnchorPane.setLeftAnchor(editorOperationsBar, 0.0);
-		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
-		root.getChildren().add(editorOperationsBar);
+		toolBar = new ToolBar();
+		AnchorPane.setTopAnchor(toolBar, 0.0);
+		AnchorPane.setLeftAnchor(toolBar, 0.0);
+		AnchorPane.setRightAnchor(toolBar, 0.0);
+		root.getChildren().add(toolBar);
 		
 		clearButton = new Button("Clear");
 		clearButton.setDisable(true);
 		clearButton.setOnAction(e -> handleClearButtonClicked(e));
-		editorOperationsBar.getChildren().add(clearButton);
+		toolBar.getItems().add(clearButton);
 		
 		textArea = new TextArea();
-		AnchorPane.setTopAnchor(textArea, 40.0);
+		AnchorPane.setTopAnchor(textArea, 38.0);
 		AnchorPane.setBottomAnchor(textArea, 0.0);
 		AnchorPane.setLeftAnchor(textArea, 0.0);
 		AnchorPane.setRightAnchor(textArea, 0.0);

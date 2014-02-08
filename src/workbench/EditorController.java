@@ -3,21 +3,18 @@ package workbench;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
-import javafx.event.Event;
-import javafx.event.EventHandler;
-import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.ToolBar;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
 
 import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.metadata.Metadata;
@@ -277,6 +274,7 @@ public class EditorController {
 	private Map<String, FileController> fileControllers = new HashMap<String, FileController>();
 	
 	private AnchorPane root;
+	private ToolBar toolBar;
 	private Button newButton;
 	private Button createButton;
 	private Button updateButton;
@@ -292,13 +290,6 @@ public class EditorController {
 
 	public Node getRoot() {
 		return root;
-	}
-	
-	public void closeAll() {
-		tabPane.getTabs().clear();
-		fileControllers.clear();
-		
-		// TODO: Special handling for zero remaining file controllers and tabs
 	}
 	
 	public void edit(String type, String fullName) {
@@ -370,39 +361,49 @@ public class EditorController {
 		// TODO: Special handling for zero remaining file controllers and tabs
 	}
 	
+	public void closeAll() {
+		tabPane.getTabs().clear();
+		fileControllers.clear();
+		
+		setDisablesForTabSelection();
+		
+		// TODO: Special handling for zero remaining file controllers and tabs
+	}
+	
 	private void createGraph() {
 		
 		root = new AnchorPane();
 		
-		HBox editorOperationsBar = new HBox();
-		editorOperationsBar.setAlignment(Pos.BASELINE_CENTER);
-		AnchorPane.setTopAnchor(editorOperationsBar, 6.0);
-		AnchorPane.setLeftAnchor(editorOperationsBar, 0.0);
-		AnchorPane.setRightAnchor(editorOperationsBar, 0.0);
-		root.getChildren().add(editorOperationsBar);
+		toolBar = new ToolBar();
+		AnchorPane.setTopAnchor(toolBar, 0.0);
+		AnchorPane.setLeftAnchor(toolBar, 0.0);
+		AnchorPane.setRightAnchor(toolBar, 0.0);
+		root.getChildren().add(toolBar);
 		
 		newButton = new Button("New");
 		newButton.setOnAction(e -> handleNewButtonClicked(e));
-		editorOperationsBar.getChildren().add(newButton);
+		toolBar.getItems().add(newButton);
+		
+		toolBar.getItems().add(new Separator());
 		
 		createButton = new Button("Create");
 		createButton.setDisable(true);
 		createButton.setOnAction(e -> handleCreateButtonClicked(e));
-		editorOperationsBar.getChildren().add(createButton);
+		toolBar.getItems().add(createButton);
 		
 		updateButton = new Button("Update");
 		updateButton.setDisable(true);
 		updateButton.setOnAction(e -> handleUpdateButtonClicked(e));
-		editorOperationsBar.getChildren().add(updateButton);
+		toolBar.getItems().add(updateButton);
 		
 		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
 		cancelButton.setOnAction(e -> handleCancelButtonClicked(e));
-		editorOperationsBar.getChildren().add(cancelButton);
+		toolBar.getItems().add(cancelButton);
 		
 		tabPane = new TabPane();
 		tabPane.setSide(Side.BOTTOM);
-		AnchorPane.setTopAnchor(tabPane, 40.0);
+		AnchorPane.setTopAnchor(tabPane, 38.0);
 		AnchorPane.setBottomAnchor(tabPane, 0.0);
 		AnchorPane.setLeftAnchor(tabPane, 0.0);
 		AnchorPane.setRightAnchor(tabPane, 0.0);
@@ -434,8 +435,6 @@ public class EditorController {
 		tab.setText(newFileName);
 		tab.setOnSelectionChanged(es -> setDisablesForTabSelection());
 		tab.setOnClosed(ec -> {
-			// TODO: Remember to add logic to change the handler to use real file name after
-			// create is completed.
 			fileControllers.remove(newFileName);
 			setDisablesForTabSelection();
 		});
@@ -555,6 +554,7 @@ public class EditorController {
 		
 		if (tabPane.getTabs().size() == 0) {
 			updateButton.setDisable(true);
+			createButton.setDisable(true);
 		}
 		else {
 			boolean connected = application.metadataConnection().get() != null;
