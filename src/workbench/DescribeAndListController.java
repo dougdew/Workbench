@@ -21,6 +21,7 @@ import com.sforce.soap.metadata.DescribeMetadataObject;
 import com.sforce.soap.metadata.DescribeMetadataResult;
 import com.sforce.soap.metadata.FileProperties;
 import com.sforce.soap.metadata.ListMetadataQuery;
+import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.ws.ConnectionException;
 
 public class DescribeAndListController {
@@ -45,6 +46,44 @@ public class DescribeAndListController {
 		}
 	}
 	
+	private static class DescribeWorker extends Task<DescribeWorkerResults> {
+		
+		private MetadataConnection connection;
+		private double apiVersion;
+		
+		public DescribeWorker(MetadataConnection connection, double apiVersion) {
+			this.connection = connection;
+			this.apiVersion = apiVersion;
+		}
+		
+		@Override
+		protected DescribeWorkerResults call() throws Exception {
+			
+			DescribeWorkerResults workerResults = new DescribeWorkerResults();
+			
+			try {
+				SOAPLogHandler logHandler = new SOAPLogHandler("DESCRIBE");
+				connection.getConfig().addMessageHandler(logHandler);
+				workerResults.setLogHandler(logHandler);
+				
+				DescribeMetadataResult mdapiDescribe = connection.describeMetadata(apiVersion);
+				
+				SortedMap<String, DescribeMetadataObject> describeResult = new TreeMap<>();
+				for (DescribeMetadataObject dmo : mdapiDescribe.getMetadataObjects()) {
+					describeResult.put(dmo.getXmlName(), dmo);
+				}
+				workerResults.setDescription(describeResult);
+				
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				// TODO: Fix this
+				e.printStackTrace();
+			}
+			return workerResults;
+		}
+	}
+	
 	private static class ListWorkerResults {
 		
 		private SOAPLogHandler logHandler;
@@ -62,6 +101,50 @@ public class DescribeAndListController {
 		}
 		public SortedMap<String, FileProperties> getList() {
 			return list;
+		}
+	}
+	
+	private static class ListWorker extends Task<ListWorkerResults> {
+		
+		private MetadataConnection connection;
+		private double apiVersion;
+		private String typeName;
+		
+		public ListWorker(MetadataConnection connection, double apiVersion, String typeName) {
+			this.connection = connection;
+			this.apiVersion = apiVersion;
+			this.typeName = typeName;
+		}
+		
+		@Override
+		protected ListWorkerResults call() throws Exception {
+			
+			ListWorkerResults workerResults = new ListWorkerResults();
+			
+			try {
+				SOAPLogHandler logHandler = new SOAPLogHandler("LIST");
+				connection.getConfig().addMessageHandler(logHandler);
+				workerResults.setLogHandler(logHandler);
+				
+				SortedMap<String, FileProperties> listResult = new TreeMap<>();
+				ListMetadataQuery query = new ListMetadataQuery();
+				query.setType(typeName);
+				
+				FileProperties[] mdapiList = connection.listMetadata(new ListMetadataQuery[]{query}, apiVersion);
+				
+				for (FileProperties fp : mdapiList) {
+					listResult.put(fp.getFileName(), fp);
+				}
+				workerResults.setList(listResult);
+				
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				// TODO: Fix this
+				e.printStackTrace();
+			}
+			
+			return workerResults;
 		}
 	}
 	
@@ -85,11 +168,45 @@ public class DescribeAndListController {
 		}
 	}
 	
-	private Main application;
+	private static class DeleteWorker extends Task<DeleteWorkerResults> {
+		
+		private MetadataConnection connection;
+		private String typeName;
+		private String fullName;
+		
+		public DeleteWorker(MetadataConnection connection, String typeName, String fullName) {
+			this.connection = connection;
+			this.typeName = typeName;
+			this.fullName = fullName;
+		}
+		
+		@Override
+		protected DeleteWorkerResults call() throws Exception {
+			
+			DeleteWorkerResults workerResults = new DeleteWorkerResults();
+			
+			try {
+				SOAPLogHandler logHandler = new SOAPLogHandler("DELETE");
+				connection.getConfig().addMessageHandler(logHandler);
+				workerResults.setLogHandler(logHandler);
+				
+				DeleteResult[] mdapiDelete = connection.deleteMetadata(typeName, new String[]{fullName});
+				if (mdapiDelete != null && mdapiDelete.length == 1 && mdapiDelete[0].getSuccess()) {
+					workerResults.setSuccess(true);
+				} 
+				
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				// TODO: Fix this
+				e.printStackTrace();
+			}
+			
+			return workerResults;
+		}
+	}
 	
-	private Task<DescribeWorkerResults> describeWorker;
-	private Task<ListWorkerResults> listWorker;
-	private Task<DeleteWorkerResults> deleteWorker;
+	private Main application;
 	
 	private SortedMap<String, DescribeMetadataObject> metadataDescription;
 	private Map<String, SortedMap<String, FileProperties>> metadataLists = new TreeMap<>();
@@ -148,7 +265,6 @@ public class DescribeAndListController {
 		
 		cancelButton = new Button("Cancel");
 		cancelButton.setDisable(true);
-		cancelButton.setOnAction(e -> handleCancelButtonClicked(e));
 		treeOperationsBar.getChildren().add(cancelButton);
 		
 		descriptionAndListsTree = new TreeView<>();
@@ -166,7 +282,7 @@ public class DescribeAndListController {
 	
 	private void handleMetadataConnectionChanged() {
 		if (application.metadataConnection().get() != null) {
-			setButtonDisablesForTreeSelection();
+			setDisablesForTreeSelection();
 		}
 		else {
 			describeButton.setDisable(true);
@@ -186,17 +302,17 @@ public class DescribeAndListController {
 		descriptionAndListsTreeRoot.setValue(newOrgName);
 		descriptionAndListsTree.getSelectionModel().select(descriptionAndListsTreeRoot);
 		
-		setButtonDisablesForTreeSelection();
+		setDisablesForTreeSelection();
 	}
 	
 	private void handleTreeItemClicked(MouseEvent e) {
 		
 		if (e.getClickCount() == 1) {		
-			setButtonDisablesForTreeSelection();
+			setDisablesForTreeSelection();
 		}
 	}
 	
-	private void setButtonDisablesForTreeSelection() {
+	private void setDisablesForTreeSelection() {
 		
 		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 		if (selectedItem == null) {
@@ -240,13 +356,23 @@ public class DescribeAndListController {
 		}
 	}
 	
+	private void setDisablesForOperationCompletion() {
+		cancelButton.setDisable(true);
+		descriptionAndListsTree.setDisable(false);
+		setDisablesForTreeSelection();
+	}
+	
+	private void setDisablesForOperationCancellation() {
+		cancelButton.setDisable(true);
+		// TODO:
+	}
+	
 	private void handleDescribeButtonClicked(ActionEvent e) {
 		
 		descriptionAndListsTree.setDisable(true);
 		describeButton.setDisable(true);
-		cancelButton.setDisable(false);
 		
-		describeWorker = createDescribeWorker();
+		final DescribeWorker describeWorker = new DescribeWorker(application.metadataConnection().get(), application.apiVersion().get());
 		describeWorker.setOnSucceeded(es -> {
 			application.getPropertiesController().showPropertiesForType(null);
 			metadataLists.clear();
@@ -258,12 +384,14 @@ public class DescribeAndListController {
 			}
 			application.getLogController().log(describeWorker.getValue().getLogHandler());
 			
-			describeWorker = null;
-			
-			cancelButton.setDisable(true);
-			describeButton.setDisable(false);
-			descriptionAndListsTree.setDisable(false);
+			setDisablesForOperationCompletion();
 		});
+		
+		cancelButton.setOnAction(ec -> {
+			describeWorker.cancel();
+			handleCancelButtonClicked(ec);
+		});
+		cancelButton.setDisable(false);
 		
 		new Thread(describeWorker).start();
 	}
@@ -272,14 +400,13 @@ public class DescribeAndListController {
 		
 		descriptionAndListsTree.setDisable(true);
 		listButton.setDisable(true);
-		cancelButton.setDisable(false);
 		
 		// TODO: Record and maintain scroll position
 		
 		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 		String selectedTypeName = selectedItem.getValue().toString();
 		
-		listWorker = createListWorker(selectedTypeName);
+		final ListWorker listWorker = new ListWorker(application.metadataConnection().get(), application.apiVersion().get(), selectedTypeName);
 		listWorker.setOnSucceeded(es -> {
 			SortedMap<String, FileProperties> listResult = listWorker.getValue().getList();
 			metadataLists.put(selectedTypeName, listResult);
@@ -293,14 +420,16 @@ public class DescribeAndListController {
 			}
 			application.getLogController().log(listWorker.getValue().getLogHandler());
 			
-			listWorker = null;
-			
 			descriptionAndListsTree.getSelectionModel().select(selectedItem);
 			
-			cancelButton.setDisable(true);
-			listButton.setDisable(false);
-			descriptionAndListsTree.setDisable(false);
+			setDisablesForOperationCompletion();
 		});
+		
+		cancelButton.setOnAction(ec -> {
+			listWorker.cancel();
+			handleCancelButtonClicked(ec);
+		});
+		cancelButton.setDisable(false);
 		
 		new Thread(listWorker).start();
 	}
@@ -340,7 +469,7 @@ public class DescribeAndListController {
 		String fileName = selectedItem.getValue();
 		FileProperties fp = fileMap.get(fileName);
 		
-		deleteWorker = createDeleteWorker(typeName, fp.getFullName());
+		final DeleteWorker deleteWorker = new DeleteWorker(application.metadataConnection().get(), typeName, fp.getFullName());
 		deleteWorker.setOnSucceeded(es -> {
 			
 			boolean deleted = deleteWorker.getValue().getSuccess();
@@ -355,130 +484,23 @@ public class DescribeAndListController {
 				readButton.setDisable(false);
 			}
 			
-			deleteWorker = null;
-			
-			descriptionAndListsTree.setDisable(false);
+			setDisablesForOperationCompletion();
 		});
+		
+		cancelButton.setOnAction(ec -> {
+			deleteWorker.cancel();
+			handleCancelButtonClicked(ec);
+		});
+		cancelButton.setDisable(false);
 		
 		new Thread(deleteWorker).start();
 	}
 	
-	private void handleCancelButtonClicked(ActionEvent e) {
+	private void handleCancelButtonClicked(ActionEvent e) {	
+		cancelButton.setOnAction(null);
 		
-		cancelButton.setDisable(true);
+		// TODO: Fix this to wait for cancel to complete?
 		
-		if (describeWorker != null) {
-			describeWorker.cancel(true);
-		}
-		if (listWorker != null) {
-			listWorker.cancel(true);
-		}
-		
-		// TODO: Fix this to wait for cancel to complete
-		setButtonDisablesForTreeSelection();
-	}
-	
-	private Task<DescribeWorkerResults> createDescribeWorker() {
-		
-		return new Task<DescribeWorkerResults>() {
-			
-			@Override
-			protected DescribeWorkerResults call() throws Exception {
-				
-				DescribeWorkerResults workerResults = new DescribeWorkerResults();
-				
-				try {
-					SOAPLogHandler logHandler = new SOAPLogHandler("DESCRIBE");
-					application.metadataConnection().get().getConfig().addMessageHandler(logHandler);
-					workerResults.setLogHandler(logHandler);
-					
-					double apiVersion = application.apiVersion().get();
-					DescribeMetadataResult mdapiDescribe = application.metadataConnection().get().describeMetadata(apiVersion);
-					
-					SortedMap<String, DescribeMetadataObject> describeResult = new TreeMap<>();
-					for (DescribeMetadataObject dmo : mdapiDescribe.getMetadataObjects()) {
-						describeResult.put(dmo.getXmlName(), dmo);
-					}
-					workerResults.setDescription(describeResult);
-					
-					application.metadataConnection().get().getConfig().clearMessageHandlers();
-				}
-				catch (ConnectionException e) {
-					// TODO: Fix this
-					e.printStackTrace();
-				}
-				return workerResults;
-			}
-		};
-	}
-	
-	private Task<ListWorkerResults> createListWorker(String typeName) {
-		
-		return new Task<ListWorkerResults>() {
-			
-			@Override
-			protected ListWorkerResults call() throws Exception {
-				
-				ListWorkerResults workerResults = new ListWorkerResults();
-				
-				try {
-					SOAPLogHandler logHandler = new SOAPLogHandler("LIST");
-					application.metadataConnection().get().getConfig().addMessageHandler(logHandler);
-					workerResults.setLogHandler(logHandler);
-					
-					SortedMap<String, FileProperties> listResult = new TreeMap<>();
-					ListMetadataQuery query = new ListMetadataQuery();
-					query.setType(typeName);
-					
-					double apiVersion = application.apiVersion().get();
-					FileProperties[] mdapiList = application.metadataConnection().get().listMetadata(new ListMetadataQuery[]{query}, apiVersion);
-					
-					for (FileProperties fp : mdapiList) {
-						listResult.put(fp.getFileName(), fp);
-					}
-					workerResults.setList(listResult);
-					
-					application.metadataConnection().get().getConfig().clearMessageHandlers();
-				}
-				catch (ConnectionException e) {
-					// TODO: Fix this
-					e.printStackTrace();
-				}
-				
-				return workerResults;
-			}
-		};
-	}
-	
-	private Task<DeleteWorkerResults> createDeleteWorker(String typeName, String fullName) {
-		
-		return new Task<DeleteWorkerResults>() {
-			
-			@Override
-			protected DeleteWorkerResults call() throws Exception {
-				
-				DeleteWorkerResults workerResults = new DeleteWorkerResults();
-				
-				try {
-					SOAPLogHandler logHandler = new SOAPLogHandler("DELETE");
-					application.metadataConnection().get().getConfig().addMessageHandler(logHandler);
-					workerResults.setLogHandler(logHandler);
-					
-					DeleteResult[] mdapiDelete = application.metadataConnection().get().deleteMetadata(typeName, new String[]{fullName});
-					if (mdapiDelete != null && mdapiDelete.length == 1 && mdapiDelete[0].getSuccess()) {
-						workerResults.setSuccess(true);
-					} 
-					
-					application.metadataConnection().get().getConfig().clearMessageHandlers();
-				}
-				catch (ConnectionException e) {
-					// TODO: Fix this
-					e.printStackTrace();
-				}
-				
-				return workerResults;
-			}
-			
-		};
+		setDisablesForOperationCancellation();
 	}
 }

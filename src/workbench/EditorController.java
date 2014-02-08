@@ -25,9 +25,7 @@ import com.sforce.soap.metadata.SaveResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.bind.TypeInfo;
 import com.sforce.ws.bind.TypeMapper;
-import com.sforce.ws.parser.PullParserException;
 import com.sforce.ws.parser.XmlInputStream;
-import com.sforce.ws.wsdl.Constants;
 
 import workbench.editor.Editor;
 import workbench.editor.EditorFactory;
@@ -62,6 +60,57 @@ public class EditorController {
 		}
 	}
 	
+	private static class CreateWorker extends Task<CreateWorkerResults> {
+		
+		private MetadataConnection connection;
+		private String xml;
+		
+		public CreateWorker(MetadataConnection connection, String xml) {
+			this.connection = connection;
+			this.xml = xml;
+		}
+		
+		@Override
+		protected CreateWorkerResults call() throws Exception {
+		
+			CreateWorkerResults results = new CreateWorkerResults();
+			
+			try {
+				XmlInputStream xin = new XmlInputStream();
+				xin.setInput(new ByteArrayInputStream(xml.getBytes(Charset.forName("UTF-8"))), "UTF-8");
+				
+				TypeMapper mapper = new TypeMapper();
+				TypeInfo typeInfo = new TypeInfo(Main.getMetadataNamespace(), 
+											     "Metadata", 
+											     Main.getMetadataNamespace(), 
+											     "Metadata", 
+											     0, 
+											     1, 
+											     true);
+				xin.peekTag();
+				Metadata metadata = (Metadata)mapper.readObject(xin, typeInfo, Metadata.class);
+				results.setMetadata(metadata);
+				
+				SOAPLogHandler logHandler = new SOAPLogHandler("CREATE: ");
+				connection.getConfig().addMessageHandler(logHandler);
+				results.setLogHandler(logHandler);
+				
+				SaveResult[] mdapiCreate = connection.createMetadata(new Metadata[]{metadata});
+				if (mdapiCreate != null && mdapiCreate.length == 1) {
+					results.setSuccess(mdapiCreate[0].isSuccess());
+					// TODO: Add error reporting
+				}
+				
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				e.printStackTrace();
+			}
+			
+			return results;
+		}
+	}
+	
 	private static class ReadWorkerResults {
 		
 		private SOAPLogHandler logHandler;
@@ -79,6 +128,42 @@ public class EditorController {
 		}
 		public Metadata getMetadata() {
 			return metadata;
+		}
+	}
+	
+	private static class ReadWorker extends Task<ReadWorkerResults> {
+		
+		private MetadataConnection connection;
+		private String type;
+		private String fullName;
+		
+		public ReadWorker(MetadataConnection connection, String type, String fullName) {
+			this.connection = connection;
+			this.type = type;
+			this.fullName = fullName;
+		}
+		
+		@Override
+		protected ReadWorkerResults call() throws Exception {
+			
+			ReadWorkerResults results = new ReadWorkerResults();
+			
+			try {
+				SOAPLogHandler logHandler = new SOAPLogHandler("READ: " + fullName);
+				connection.getConfig().addMessageHandler(logHandler);
+				results.setLogHandler(logHandler);
+				
+				Metadata[] records = connection.readMetadata(type, new String[]{fullName}).getRecords();
+				if (records != null && records.length == 1) {
+					results.setMetadata(records[0]);
+				}
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				e.printStackTrace();
+			}
+			
+			return results;
 		}
 	}
 	
@@ -102,6 +187,40 @@ public class EditorController {
 		}
 	}
 	
+	private static class UpdateWorker extends Task<UpdateWorkerResults> {
+		
+		private MetadataConnection connection;
+		private Metadata metadata;
+		
+		public UpdateWorker(MetadataConnection connection, Metadata metadata) {
+			this.connection = connection;
+			this.metadata = metadata;
+		}
+		
+		@Override
+		protected UpdateWorkerResults call() throws Exception {
+			
+			UpdateWorkerResults results = new UpdateWorkerResults();
+			
+			try {
+				SOAPLogHandler logHandler = new SOAPLogHandler("UPDATE: " + metadata.getFullName());
+				connection.getConfig().addMessageHandler(logHandler);
+				results.setLogHandler(logHandler);
+				
+				SaveResult[] mdapiUpdate = connection.updateMetadata(new Metadata[]{metadata});
+				if (mdapiUpdate != null && mdapiUpdate.length == 1) {
+					results.setSuccess(mdapiUpdate[0].isSuccess());
+				}
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				e.printStackTrace();
+			}
+			
+			return results;
+		}
+	}
+	
 	private static class FileController {
 		
 		private String type;
@@ -109,9 +228,6 @@ public class EditorController {
 		private Tab tab;
 		private Editor editor;
 		private Metadata metadata;
-		private Task<ReadWorkerResults> readWorker;
-		private Task<CreateWorkerResults> createWorker;
-		private Task<UpdateWorkerResults> updateWorker;
 		
 		public String getType() {
 			return type;
@@ -146,27 +262,6 @@ public class EditorController {
 		}
 		public void setMetadata(Metadata metadata) {
 			this.metadata = metadata;
-		}
-		
-		public Task<ReadWorkerResults> getReadWorker() {
-			return readWorker;
-		}
-		public void setReadWorker(Task<ReadWorkerResults> readWorker) {
-			this.readWorker = readWorker;
-		}
-		
-		public Task<CreateWorkerResults> getCreateWorker() {
-			return createWorker;
-		}
-		public void setCreateWorker(Task<CreateWorkerResults> createWorker) {
-			this.createWorker = createWorker;
-		}
-		
-		public Task<UpdateWorkerResults> getUpdateWorker() {
-			return updateWorker;
-		}
-		public void setUpdateWorker(Task<UpdateWorkerResults> updateWorker) {
-			this.updateWorker = updateWorker;
 		}
 		
 		public boolean isNew() {
@@ -226,36 +321,39 @@ public class EditorController {
 		
 		Tab tab = new Tab();
 		tab.setText(typeQualifiedName);
-		tab.setOnSelectionChanged(e -> setButtonDisablesForSelectedTab());
+		tab.setOnSelectionChanged(e -> setDisablesForTabSelection());
 		tab.setOnClosed(e -> {
 			fileControllers.remove(typeQualifiedName);
-			setButtonDisablesForSelectedTab();
+			setDisablesForTabSelection();
 		});
 		fileController.setTab(tab);
 		
 		final Editor editor = EditorFactory.createEditor(type);
-		editor.dirty().addListener((o, oldValue, newValue) -> setButtonDisablesForSelectedTab());
+		editor.dirty().addListener((o, oldValue, newValue) -> setDisablesForTabSelection());
 		tab.setContent(editor.getRoot());
 		fileController.setEditor(editor);
 		
-		Task<ReadWorkerResults> readWorker = createReadWorker(type, fullName);
+		final ReadWorker readWorker = new ReadWorker(application.metadataConnection().get(), type, fullName);
 		readWorker.setOnSucceeded(e -> {
-			fileController.setReadWorker(null);
 			Metadata m = readWorker.getValue().getMetadata();
 			fileController.setMetadata(m);
 			editor.setMetadata(m);
 			application.getLogController().log(readWorker.getValue().getLogHandler());
-			cancelButton.setDisable(true);
+			
+			setDisablesForOperationCompletion();
 		});	
-		fileController.setReadWorker(readWorker);
 		
 		fileControllers.put(typeQualifiedName, fileController);
 		
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
 		
-		setButtonDisablesForSelectedTab();
+		setDisablesForTabSelection();
 		
+		cancelButton.setOnAction(ec -> {
+			readWorker.cancel();
+			handleCancelButtonClicked(ec);
+		});
 		cancelButton.setDisable(false);
 		
 		new Thread(readWorker).start();
@@ -272,7 +370,7 @@ public class EditorController {
 		tabPane.getTabs().remove(fileController.getTab());
 		fileControllers.remove(typeQualifiedName);
 		
-		setButtonDisablesForSelectedTab();
+		setDisablesForTabSelection();
 		
 		// TODO: Special handling for zero remaining file controllers and tabs
 	}
@@ -335,18 +433,18 @@ public class EditorController {
 		
 		Tab tab = new Tab();
 		tab.setText(newFileName);
-		tab.setOnSelectionChanged(es -> setButtonDisablesForSelectedTab());
+		tab.setOnSelectionChanged(es -> setDisablesForTabSelection());
 		tab.setOnClosed(ec -> {
 			// TODO: Remember to add logic to change the handler to use real file name after
 			// create is completed.
 			fileControllers.remove(newFileName);
-			setButtonDisablesForSelectedTab();
+			setDisablesForTabSelection();
 		});
 		fileController.setTab(tab);
 		
 		// TODO: Enable editor factory to handle null type
 		final Editor editor = EditorFactory.createEditor(null);
-		editor.dirty().addListener((o, oldValue, newValue) -> setButtonDisablesForSelectedTab());
+		editor.dirty().addListener((o, oldValue, newValue) -> setDisablesForTabSelection());
 		tab.setContent(editor.getRoot());
 		fileController.setEditor(editor);
 		
@@ -355,7 +453,7 @@ public class EditorController {
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
 		
-		setButtonDisablesForSelectedTab();
+		setDisablesForTabSelection();
 	}
 	
 	private void handleCreateButtonClicked(ActionEvent e) {
@@ -378,9 +476,8 @@ public class EditorController {
 		editor.lock();
 		String xml = editor.getMetadataAsXml();
 		
-		Task<CreateWorkerResults> createWorker = createCreateWorker(xml);
+		final CreateWorker createWorker = new CreateWorker(application.metadataConnection().get(), xml);
 		createWorker.setOnSucceeded(es -> {
-			fileController.setCreateWorker(null);
 			application.getLogController().log(createWorker.getValue().getLogHandler());
 			cancelButton.setDisable(true);
 			boolean created = createWorker.getValue().getSuccess();
@@ -393,10 +490,13 @@ public class EditorController {
 				editor.setMetadata(metadata);
 			}
 			editor.unlock();
-			setButtonDisablesForSelectedTab();
+			setDisablesForOperationCompletion();
 		});
-		fileController.setCreateWorker(createWorker);
 		
+		cancelButton.setOnAction(ec -> {
+			createWorker.cancel();
+			handleCancelButtonClicked(ec);
+		});
 		cancelButton.setDisable(false);
 		
 		new Thread(createWorker).start();
@@ -422,9 +522,8 @@ public class EditorController {
 		editor.lock();
 		Metadata m = editor.getMetadata();
 		
-		Task<UpdateWorkerResults> updateWorker = createUpdateWorker(m);
+		final UpdateWorker updateWorker = new UpdateWorker(application.metadataConnection().get(), m);
 		updateWorker.setOnSucceeded(es -> {
-			fileController.setUpdateWorker(null);
 			application.getLogController().log(updateWorker.getValue().getLogHandler());
 			cancelButton.setDisable(true);
 			boolean updated = updateWorker.getValue().getSuccess();
@@ -432,10 +531,13 @@ public class EditorController {
 				editor.dirty().set(false);
 			}
 			editor.unlock();
-			setButtonDisablesForSelectedTab();
+			setDisablesForOperationCompletion();
 		});
-		fileController.setUpdateWorker(updateWorker);
 		
+		cancelButton.setOnAction(ec -> {
+			updateWorker.cancel();
+			handleCancelButtonClicked(ec);
+		});
 		cancelButton.setDisable(false);
 		
 		new Thread(updateWorker).start();
@@ -443,21 +545,14 @@ public class EditorController {
 	
 	private void handleCancelButtonClicked(ActionEvent e) {
 		
-		cancelButton.setDisable(true);
-		String fileName = tabPane.getSelectionModel().getSelectedItem().getText();
-		FileController fileController = fileControllers.get(fileName);
-		if (fileController.getReadWorker() != null) {
-			fileController.getReadWorker().cancel();
-		}
-		if (fileController.getCreateWorker() != null) {
-			fileController.getCreateWorker().cancel();
-		}
-		if (fileController.getUpdateWorker() != null) {
-			fileController.getUpdateWorker().cancel();
-		}
+		cancelButton.setOnAction(null);
+		
+		// TODO: Fix this to wait for cancel to complete?
+		
+		setDisablesForOperationCancellation();
 	}
 	
-	private void setButtonDisablesForSelectedTab() {
+	private void setDisablesForTabSelection() {
 		
 		if (tabPane.getTabs().size() == 0) {
 			updateButton.setDisable(true);
@@ -490,120 +585,17 @@ public class EditorController {
 		}
 	}
 	
+	private void setDisablesForOperationCompletion() {
+		cancelButton.setDisable(true);
+		setDisablesForTabSelection();
+	}
+	
+	private void setDisablesForOperationCancellation() {
+		cancelButton.setDisable(true);
+		// TODO:
+	}
+	
 	private String createTypeQualifiedName(String type, String fullName) {
 		return type + ":" + fullName;
-	}
-	
-	private Task<CreateWorkerResults> createCreateWorker(String xml) {
-		
-		Task<CreateWorkerResults> worker = new Task<CreateWorkerResults>() {
-			
-			@Override
-			protected CreateWorkerResults call() throws Exception {
-			
-				CreateWorkerResults results = new CreateWorkerResults();
-				
-				try {
-					XmlInputStream xin = new XmlInputStream();
-					xin.setInput(new ByteArrayInputStream(xml.getBytes(Charset.forName("UTF-8"))), "UTF-8");
-					
-					TypeMapper mapper = new TypeMapper();
-					TypeInfo typeInfo = new TypeInfo(Main.getMetadataNamespace(), 
-												     "Metadata", 
-												     Main.getMetadataNamespace(), 
-												     "Metadata", 
-												     0, 
-												     1, 
-												     true);
-					xin.peekTag();
-					Metadata metadata = (Metadata)mapper.readObject(xin, typeInfo, Metadata.class);
-					results.setMetadata(metadata);
-					
-					MetadataConnection conn = application.metadataConnection().get();
-					SOAPLogHandler logHandler = new SOAPLogHandler("CREATE: ");
-					conn.getConfig().addMessageHandler(logHandler);
-					results.setLogHandler(logHandler);
-					
-					SaveResult[] mdapiCreate = conn.createMetadata(new Metadata[]{metadata});
-					if (mdapiCreate != null && mdapiCreate.length == 1) {
-						results.setSuccess(mdapiCreate[0].isSuccess());
-						// TODO: Add error reporting
-					}
-					
-					conn.getConfig().clearMessageHandlers();
-				}
-				catch (ConnectionException e) {
-					e.printStackTrace();
-				}
-				
-				return results;
-			}
-		};
-		
-		return worker;
-	}
-	
-	private Task<ReadWorkerResults> createReadWorker(String type, String fullName) {
-		
-		Task<ReadWorkerResults> worker = new Task<ReadWorkerResults>() {
-			
-			@Override
-			protected ReadWorkerResults call() throws Exception {
-				
-				ReadWorkerResults results = new ReadWorkerResults();
-				
-				try {
-					MetadataConnection conn = application.metadataConnection().get();
-					SOAPLogHandler logHandler = new SOAPLogHandler("READ: " + fullName);
-					conn.getConfig().addMessageHandler(logHandler);
-					results.setLogHandler(logHandler);
-					
-					Metadata[] records = conn.readMetadata(type, new String[]{fullName}).getRecords();
-					if (records != null && records.length == 1) {
-						results.setMetadata(records[0]);
-					}
-					conn.getConfig().clearMessageHandlers();
-				}
-				catch (ConnectionException e) {
-					e.printStackTrace();
-				}
-				
-				return results;
-			}
-		};
-		
-		return worker;
-	}
-	
-	private Task<UpdateWorkerResults> createUpdateWorker(Metadata m) {
-		
-		Task<UpdateWorkerResults> worker = new Task<UpdateWorkerResults>() {
-			
-			@Override
-			protected UpdateWorkerResults call() throws Exception {
-				
-				UpdateWorkerResults results = new UpdateWorkerResults();
-				
-				try {
-					MetadataConnection conn = application.metadataConnection().get();
-					SOAPLogHandler logHandler = new SOAPLogHandler("UPDATE: " + m.getFullName());
-					conn.getConfig().addMessageHandler(logHandler);
-					results.setLogHandler(logHandler);
-					
-					SaveResult[] mdapiUpdate = conn.updateMetadata(new Metadata[]{m});
-					if (mdapiUpdate != null && mdapiUpdate.length == 1) {
-						results.setSuccess(mdapiUpdate[0].isSuccess());
-					}
-					conn.getConfig().clearMessageHandlers();
-				}
-				catch (ConnectionException e) {
-					e.printStackTrace();
-				}
-				
-				return results;
-			}
-		};
-		
-		return worker;
 	}
 }

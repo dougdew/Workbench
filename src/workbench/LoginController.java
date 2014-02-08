@@ -68,12 +68,68 @@ public class LoginController {
 		}
 	}
 	
+	private static class LoginWorker extends Task<LoginWorkerResults> {
+		
+		private String serverUrl;
+		private String apiVersion;
+		private String userName;
+		private String password;
+		
+		public LoginWorker(String serverUrl, String apiVersion, String userName, String password) {
+			this.serverUrl = serverUrl;
+			this.apiVersion = apiVersion;
+			this.userName = userName;
+			this.password = password;
+		}
+		
+		@Override
+		public LoginWorkerResults call() throws Exception {
+			
+			LoginWorkerResults results = new LoginWorkerResults();
+			
+			try {
+				ConnectorConfig eConfig = new ConnectorConfig();
+				eConfig.setAuthEndpoint(serverUrl + apiVersion);
+				eConfig.setServiceEndpoint(serverUrl + apiVersion);
+				eConfig.setManualLogin(true);
+				
+				SOAPLogHandler logHandler = new SOAPLogHandler("LOGIN");
+				eConfig.addMessageHandler(logHandler);
+				results.setLogHandler(logHandler);
+				
+				EnterpriseConnection eConnection = new EnterpriseConnection(eConfig);
+				results.setEnterpriseConnection(eConnection);
+				
+				LoginResult loginResult = eConnection.login(userName, password);
+				
+				eConnection.setSessionHeader(loginResult.getSessionId());
+				
+				ConnectorConfig mConfig = new ConnectorConfig();
+				mConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
+				mConfig.setSessionId(loginResult.getSessionId());
+				results.setMetadataConnection(new MetadataConnection(mConfig));
+				
+				GetUserInfoResult userInfo = eConnection.getUserInfo();
+				results.setUserInfo(userInfo);
+				
+				eConfig.clearMessageHandlers();
+				
+				results.setSuccess(true);
+			}
+			catch (ConnectionException e) {
+				e.printStackTrace();
+			}
+			
+			return results;
+		}
+	}
+	
 	private static final Map<String, String> SERVERS;
 	static {
 		SERVERS = new HashMap<String, String>();
 		// Add your servers here
 		// Entries should be of the form:
-		// SERVERS.put("server nick name", "http://host:port/services/Soap/c/");
+		//SERVERS.put("server nick name", "http://host:port/services/Soap/c/");
 	}
 	
 	private static final String[] VERSIONS = {
@@ -105,7 +161,7 @@ public class LoginController {
 	
 	private Main application;
 	
-	private Task<LoginWorkerResults> loginWorker;
+	//private LoginWorker loginWorker;
 	
 	private HBox root;
 	private Rectangle loginStatus;	
@@ -193,12 +249,19 @@ public class LoginController {
 			
 			String serverUrl = SERVERS.get(serverName);
 			
+			// Possibly logged into a different account than
+			// the account being logged into now.
 			if (application.enterpriseConnection().get() != null) {
+				// TODO: Add comparison of credentials to avoid needless
+				// logout. If credentials are the same then simply return.
 				logout();
 			}
-			loginWorker = createLoginWorker(serverUrl, version, userName, password);
+			
+			final LoginWorker loginWorker = new LoginWorker(serverUrl, version, userName, password);
 			loginWorker.setOnSucceeded(es -> {
+				
 				LoginWorkerResults loginResults = loginWorker.getValue();
+				
 				if (loginResults.isSuccess()) {
 					application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
 					application.metadataConnection().set(loginResults.getMetadataConnection());
@@ -223,52 +286,5 @@ public class LoginController {
 			logout();
 			loginLogoutButton.setText("Log In");
 		}
-	}
-	
-	private Task<LoginWorkerResults> createLoginWorker(String serverUrl, String apiVersion, String userName, String password) {
-		
-		return new Task<LoginWorkerResults>() {
-			
-			@Override
-			public LoginWorkerResults call() throws Exception {
-				
-				LoginWorkerResults results = new LoginWorkerResults();
-				
-				try {
-					ConnectorConfig eConfig = new ConnectorConfig();
-					eConfig.setAuthEndpoint(serverUrl + apiVersion);
-					eConfig.setServiceEndpoint(serverUrl + apiVersion);
-					eConfig.setManualLogin(true);
-					
-					SOAPLogHandler logHandler = new SOAPLogHandler("LOGIN");
-					eConfig.addMessageHandler(logHandler);
-					results.setLogHandler(logHandler);
-					
-					EnterpriseConnection eConnection = new EnterpriseConnection(eConfig);
-					results.setEnterpriseConnection(eConnection);
-					
-					LoginResult loginResult = eConnection.login(userName, password);
-					
-					eConnection.setSessionHeader(loginResult.getSessionId());
-					
-					ConnectorConfig mConfig = new ConnectorConfig();
-					mConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
-					mConfig.setSessionId(loginResult.getSessionId());
-					results.setMetadataConnection(new MetadataConnection(mConfig));
-					
-					GetUserInfoResult userInfo = eConnection.getUserInfo();
-					results.setUserInfo(userInfo);
-					
-					eConfig.clearMessageHandlers();
-					
-					results.setSuccess(true);
-				}
-				catch (ConnectionException e) {
-					e.printStackTrace();
-				}
-				
-				return results;
-			}
-		};
 	}
 }
