@@ -294,10 +294,8 @@ public class EditorController {
 	
 	public void edit(String type, String fullName) {
 		
-		String typeQualifiedName = createTypeQualifiedName(type, fullName);
-		
-		if (fileControllers.get(typeQualifiedName) != null) {
-			tabPane.getSelectionModel().select(fileControllers.get(typeQualifiedName).getTab());
+		if (fileControllers.get(fullName) != null) {
+			tabPane.getSelectionModel().select(fileControllers.get(fullName).getTab());
 			return;
 		}
 		
@@ -306,10 +304,10 @@ public class EditorController {
 		fileController.setFullName(fullName);
 		
 		Tab tab = new Tab();
-		tab.setText(typeQualifiedName);
+		tab.setText(fullName);
 		tab.setOnSelectionChanged(e -> setDisablesForTabSelection());
 		tab.setOnClosed(e -> {
-			fileControllers.remove(typeQualifiedName);
+			fileControllers.remove(fullName);
 			setDisablesForTabSelection();
 		});
 		fileController.setTab(tab);
@@ -329,7 +327,7 @@ public class EditorController {
 			setDisablesForOperationCompletion();
 		});	
 		
-		fileControllers.put(typeQualifiedName, fileController);
+		fileControllers.put(fullName, fileController);
 		
 		tabPane.getTabs().add(tab);
 		tabPane.getSelectionModel().select(tab);
@@ -347,14 +345,13 @@ public class EditorController {
 	
 	public void close(String type, String fullName) {	
 		
-		String typeQualifiedName = createTypeQualifiedName(type, fullName);
-		FileController fileController = fileControllers.get(typeQualifiedName);
+		FileController fileController = fileControllers.get(fullName);
 		if (fileController == null) {
 			return;
 		}
 		
 		tabPane.getTabs().remove(fileController.getTab());
-		fileControllers.remove(typeQualifiedName);
+		fileControllers.remove(fullName);
 		
 		setDisablesForTabSelection();
 		
@@ -482,9 +479,9 @@ public class EditorController {
 			if (created) {
 				fileControllers.remove(newFileName);
 				Metadata metadata = createWorker.getValue().getMetadata();
-				String typeQualifiedName = createTypeQualifiedName(metadata.getClass().getSimpleName(), metadata.getFullName());
-				fileController.getTab().setText(typeQualifiedName);
-				fileControllers.put(typeQualifiedName, fileController);
+				String fullName = metadata.getFullName();
+				fileController.getTab().setText(fullName);
+				fileControllers.put(fullName, fileController);
 				editor.setMetadata(metadata);
 			}
 			editor.unlock();
@@ -509,8 +506,8 @@ public class EditorController {
 		createButton.setDisable(true);
 		updateButton.setDisable(true);
 		
-		String typeQualifiedName = tabPane.getSelectionModel().getSelectedItem().getText();
-		FileController fileController = fileControllers.get(typeQualifiedName);
+		String fullName = tabPane.getSelectionModel().getSelectedItem().getText();
+		FileController fileController = fileControllers.get(fullName);
 		Editor editor = fileController.getEditor();
 		
 		if (!editor.dirty().get()) {
@@ -592,9 +589,5 @@ public class EditorController {
 	private void setDisablesForOperationCancellation() {
 		cancelButton.setDisable(true);
 		// TODO:
-	}
-	
-	private String createTypeQualifiedName(String type, String fullName) {
-		return type + ":" + fullName;
 	}
 }

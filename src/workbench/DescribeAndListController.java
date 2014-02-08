@@ -133,7 +133,7 @@ public class DescribeAndListController {
 				FileProperties[] mdapiList = connection.listMetadata(new ListMetadataQuery[]{query}, apiVersion);
 				
 				for (FileProperties fp : mdapiList) {
-					listResult.put(fp.getFileName(), fp);
+					listResult.put(fp.getFullName(), fp);
 				}
 				workerResults.setList(listResult);
 				
@@ -307,11 +307,8 @@ public class DescribeAndListController {
 	}
 	
 	private void handleTreeItemClicked(MouseEvent e) {
-		
-		if (e.getClickCount() == 1) {		
-			setDisablesForTreeSelection();
-			showPropertiesForTreeSelection();
-		}
+		setDisablesForTreeSelection();
+		showPropertiesForTreeSelection();
 	}
 	
 	private void setDisablesForTreeSelection() {
@@ -378,8 +375,8 @@ public class DescribeAndListController {
 		else {
 			String typeName = selectedItem.getParent().getValue();
 			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
-			String fileName = selectedItem.getValue();
-			FileProperties fp = fileMap.get(fileName);
+			String fullName = selectedItem.getValue();
+			FileProperties fp = fileMap.get(fullName);
 			application.getPropertiesController().showPropertiesForFile(fp);
 		}
 	}
@@ -430,8 +427,8 @@ public class DescribeAndListController {
 			if (listResult != null) {
 				TreeItem<String> selectedTypeItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 				selectedTypeItem.getChildren().clear();
-				for (String fileName : listResult.keySet()) {
-					selectedTypeItem.getChildren().add(new TreeItem<String>(fileName));
+				for (String fullName : listResult.keySet()) {
+					selectedTypeItem.getChildren().add(new TreeItem<String>(fullName));
 				}
 				selectedTypeItem.setExpanded(true);
 			}
@@ -453,10 +450,6 @@ public class DescribeAndListController {
 	
 	private void handleReadButtonClicked(ActionEvent e) {
 		
-		// TODO: Disable read and delete buttons
-		// TODO: Enable notification that read has completed
-		// TODO: Enable read and delete buttons
-		
 		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
 		if (selectedItem == null) {
 			return;
@@ -464,10 +457,9 @@ public class DescribeAndListController {
 		
 		String typeName = selectedItem.getParent().getValue();
 		SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
-		String fileName = selectedItem.getValue();
-		FileProperties fp = fileMap.get(fileName);
+		String fullName = selectedItem.getValue();
 		
-		application.getEditorController().edit(typeName, fp.getFullName());
+		application.getEditorController().edit(typeName, fullName);
 	}
 	
 	private void handleDeleteButtonClicked(ActionEvent e) {
@@ -483,18 +475,17 @@ public class DescribeAndListController {
 		
 		String typeName = selectedItem.getParent().getValue();
 		SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
-		String fileName = selectedItem.getValue();
-		FileProperties fp = fileMap.get(fileName);
+		String fullName = selectedItem.getValue();
 		
-		final DeleteWorker deleteWorker = new DeleteWorker(application.metadataConnection().get(), typeName, fp.getFullName());
+		final DeleteWorker deleteWorker = new DeleteWorker(application.metadataConnection().get(), typeName, fullName);
 		deleteWorker.setOnSucceeded(es -> {
 			
 			boolean deleted = deleteWorker.getValue().getSuccess();
 			if (deleted) {
-				application.getEditorController().close(typeName, fp.getFullName());
+				application.getEditorController().close(typeName, fullName);
 				// TODO: Set selection somewhere helpful
 				selectedItem.getParent().getChildren().remove(selectedItem);
-				fileMap.remove(fileName);
+				fileMap.remove(fullName);
 			}
 			else {
 				deleteButton.setDisable(false);

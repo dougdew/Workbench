@@ -110,7 +110,7 @@ public class Main extends Application {
 		// BEGIN MAIN SPLIT PANE
 		SplitPane mainSplitPane = new SplitPane();
 		mainSplitPane.setDividerPosition(0, 0.35);
-		AnchorPane.setTopAnchor(mainSplitPane, 38.0);
+		AnchorPane.setTopAnchor(mainSplitPane, 37.0);
 		AnchorPane.setBottomAnchor(mainSplitPane, 0.0);
 		AnchorPane.setLeftAnchor(mainSplitPane, 0.0);
 		AnchorPane.setRightAnchor(mainSplitPane, 0.0);
