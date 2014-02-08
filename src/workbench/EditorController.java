@@ -19,6 +19,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 
+import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.soap.metadata.SaveResult;
@@ -286,6 +287,7 @@ public class EditorController {
 		this.application = application;
 		createGraph();
 		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());
+		application.userInfo().addListener((o, oldValue, newValue) -> handleUserInfoChanged(oldValue, newValue));
 	}
 
 	public Node getRoot() {
@@ -293,15 +295,8 @@ public class EditorController {
 	}
 	
 	public void closeAll() {
-		Iterator<Tab> tabIter = tabPane.getTabs().iterator();
-		while (tabIter.hasNext()) {
-			Tab tab = tabIter.next();
-			tabIter.remove();
-			EventHandler<Event> onClosedHandler = tab.getOnClosed();
-			if (onClosedHandler != null) {
-				onClosedHandler.handle(null);
-			}
-		}
+		tabPane.getTabs().clear();
+		fileControllers.clear();
 		
 		// TODO: Special handling for zero remaining file controllers and tabs
 	}
@@ -422,6 +417,10 @@ public class EditorController {
 			createButton.setDisable(true);
 			updateButton.setDisable(true);
 		}
+	}
+	
+	private void handleUserInfoChanged(GetUserInfoResult oldValue, GetUserInfoResult newValue) {
+		closeAll();
 	}
 	
 	private void handleNewButtonClicked(ActionEvent e) {

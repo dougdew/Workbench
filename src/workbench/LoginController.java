@@ -161,8 +161,6 @@ public class LoginController {
 	
 	private Main application;
 	
-	//private LoginWorker loginWorker;
-	
 	private HBox root;
 	private Rectangle loginStatus;	
 	private Button loginLogoutButton;
@@ -266,8 +264,7 @@ public class LoginController {
 					application.enterpriseConnection().set(loginResults.getEnterpriseConnection());
 					application.metadataConnection().set(loginResults.getMetadataConnection());
 					application.apiVersion().set((new Double(version)).doubleValue());
-					application.orgId().set(loginResults.getUserInfo().getOrganizationName());
-					application.orgName().set(loginResults.getUserInfo().getOrganizationName());
+					application.userInfo().set(loginResults.getUserInfo());
 		
 					loginStatus.setFill(Color.GREEN);
 					loginLogoutButton.setText("Log Out");

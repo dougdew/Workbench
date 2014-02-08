@@ -5,8 +5,6 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -16,6 +14,7 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import com.sforce.soap.enterprise.EnterpriseConnection;
+import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.metadata.MetadataConnection;
 
 public class Main extends Application {
@@ -33,8 +32,7 @@ public class Main extends Application {
 	private ObjectProperty<EnterpriseConnection> enterpriseConnectionProperty = new SimpleObjectProperty<>();
 	private ObjectProperty<MetadataConnection> metadataConnectionProperty = new SimpleObjectProperty<>();
 	private DoubleProperty apiVersionProperty = new SimpleDoubleProperty();
-	private StringProperty orgIdProperty = new SimpleStringProperty();
-	private StringProperty orgNameProperty = new SimpleStringProperty();
+	private ObjectProperty<GetUserInfoResult> userInfoProperty = new SimpleObjectProperty<>();
 	
 	public static String getMetadataNamespace() {
 		return METADATA_NAMESPACE;
@@ -91,12 +89,8 @@ public class Main extends Application {
 		return apiVersionProperty;
 	}
 	
-	public StringProperty orgId() {
-		return orgIdProperty;
-	}
-	
-	public StringProperty orgName() {
-		return orgNameProperty;
+	public ObjectProperty<GetUserInfoResult> userInfo() {
+		return userInfoProperty;
 	}
 	
 	private Scene createScene() {

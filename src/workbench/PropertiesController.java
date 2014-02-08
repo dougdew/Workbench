@@ -10,6 +10,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
 
+import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.metadata.DescribeMetadataObject;
 import com.sforce.soap.metadata.FileProperties;
 
@@ -61,12 +62,30 @@ public class PropertiesController {
 	public PropertiesController(Main application) {
 		this.application = application;
 		createGraph();
-		showPropertiesForType(null);
-		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());
+		showPropertiesForUserInfo(null);
 	}
 	
 	public Node getRoot() {
 		return root;
+	}
+	
+	public void showPropertiesForUserInfo(GetUserInfoResult uir) {
+		
+		if (uir != null) {
+			ObservableList<MetadataProperty> data = FXCollections.observableArrayList(
+					new MetadataProperty("Org ID", uir.getOrganizationId()),
+					new MetadataProperty("User Name", uir.getUserName()),
+					new MetadataProperty("User Full Name", uir.getUserFullName()),
+					new MetadataProperty("User ID", uir.getUserId()),
+					new MetadataProperty("Profile ID", uir.getProfileId()),
+					new MetadataProperty("Role ID", uir.getRoleId()),
+					new MetadataProperty("Profile ID", uir.getProfileId()),
+					new MetadataProperty("Email", uir.getUserEmail()));						
+			tableView.setItems(data);
+		}
+		else {
+			tableView.setItems(null);
+		}
 	}
 	
 	public void showPropertiesForType(DescribeMetadataObject dmo) {
@@ -131,11 +150,5 @@ public class PropertiesController {
 		valueCol.setPrefWidth(260.0);
 		valueCol.setCellValueFactory(new PropertyValueFactory<MetadataProperty, String>("value"));
 		tableView.getColumns().add(valueCol);
-	}
-	
-	private void handleMetadataConnectionChanged() {
-		if (application.metadataConnection().get() == null) {
-			// TODO:
-		}
 	}
 }

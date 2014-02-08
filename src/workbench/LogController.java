@@ -18,6 +18,8 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 
+import com.sforce.soap.enterprise.GetUserInfoResult;
+
 public class LogController {
 	
 	public interface LogMessage {
@@ -36,7 +38,7 @@ public class LogController {
 	public LogController(Main application) {
 		this.application = application;
 		createGraph();
-		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());
+		application.userInfo().addListener((o, oldValue, newValue) -> handleUserInfoChanged(oldValue, newValue));
 	}
 	
 	public Node getRoot() {
@@ -79,14 +81,13 @@ public class LogController {
 		root.getChildren().add(textArea);
 	}
 	
-	private void handleMetadataConnectionChanged() {
-		if (application.metadataConnection().get() == null) {
-			// TODO:
-		}
-	}
-	
 	private void handleClearButtonClicked(ActionEvent e) {
 		
+		textArea.clear();
+		clearButton.setDisable(true);
+	}
+	
+	private void handleUserInfoChanged(GetUserInfoResult oldValue, GetUserInfoResult newValue) {
 		textArea.clear();
 		clearButton.setDisable(true);
 	}

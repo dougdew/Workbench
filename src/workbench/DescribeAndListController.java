@@ -16,6 +16,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 
+import com.sforce.soap.enterprise.GetUserInfoResult;
 import com.sforce.soap.metadata.DeleteResult;
 import com.sforce.soap.metadata.DescribeMetadataObject;
 import com.sforce.soap.metadata.DescribeMetadataResult;
@@ -225,7 +226,7 @@ public class DescribeAndListController {
 		this.application = application;
 		createGraph();
 		application.metadataConnection().addListener((o, oldValue, newValue) -> handleMetadataConnectionChanged());
-		application.orgName().addListener((o, oldValue, newValue) -> handleOrgNameChanged(oldValue, newValue));
+		application.userInfo().addListener((o, oldValue, newValue) -> handleUserInfoChanged(oldValue, newValue));
 	}
 	
 	public Node getRoot() {
@@ -283,6 +284,7 @@ public class DescribeAndListController {
 	private void handleMetadataConnectionChanged() {
 		if (application.metadataConnection().get() != null) {
 			setDisablesForTreeSelection();
+			showPropertiesForTreeSelection();
 		}
 		else {
 			describeButton.setDisable(true);
@@ -292,23 +294,25 @@ public class DescribeAndListController {
 		}
 	}
 	
-	private void handleOrgNameChanged(String oldOrgName, String newOrgName) {
+	private void handleUserInfoChanged(GetUserInfoResult oldValue, GetUserInfoResult newValue) {
 		descriptionAndListsTree.getRoot().getChildren().clear();
 		if (metadataDescription != null) {
 			metadataDescription.clear();
 		}
 		metadataLists.clear();
 		
-		descriptionAndListsTreeRoot.setValue(newOrgName);
+		descriptionAndListsTreeRoot.setValue(newValue.getOrganizationName());
 		descriptionAndListsTree.getSelectionModel().select(descriptionAndListsTreeRoot);
 		
 		setDisablesForTreeSelection();
+		showPropertiesForTreeSelection();
 	}
 	
 	private void handleTreeItemClicked(MouseEvent e) {
 		
 		if (e.getClickCount() == 1) {		
 			setDisablesForTreeSelection();
+			showPropertiesForTreeSelection();
 		}
 	}
 	
@@ -337,8 +341,8 @@ public class DescribeAndListController {
 			readButton.setDisable(true);
 			deleteButton.setDisable(true);
 			
-			DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
-			application.getPropertiesController().showPropertiesForType(dmo);
+			//DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
+			//application.getPropertiesController().showPropertiesForType(dmo);
 		}
 		else {
 			describeButton.setDisable(true);
@@ -347,12 +351,12 @@ public class DescribeAndListController {
 				readButton.setDisable(false);
 				deleteButton.setDisable(false);
 			}
-			
+			/*
 			String typeName = selectedItem.getParent().getValue();
 			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
 			String fileName = selectedItem.getValue();
 			FileProperties fp = fileMap.get(fileName);
-			application.getPropertiesController().showPropertiesForFile(fp);
+			application.getPropertiesController().showPropertiesForFile(fp);*/
 		}
 	}
 	
@@ -360,11 +364,35 @@ public class DescribeAndListController {
 		cancelButton.setDisable(true);
 		descriptionAndListsTree.setDisable(false);
 		setDisablesForTreeSelection();
+		showPropertiesForTreeSelection();
 	}
 	
 	private void setDisablesForOperationCancellation() {
 		cancelButton.setDisable(true);
 		// TODO:
+	}
+	
+	private void showPropertiesForTreeSelection() {
+		
+		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
+		if (selectedItem == null) {
+			return;
+		}
+		
+		if (selectedItem == descriptionAndListsTree.getRoot()) {
+			application.getPropertiesController().showPropertiesForUserInfo(application.userInfo().get());
+		}
+		else if (selectedItem.getParent() == descriptionAndListsTree.getRoot()) {
+			DescribeMetadataObject dmo = metadataDescription.get(selectedItem.getValue());
+			application.getPropertiesController().showPropertiesForType(dmo);
+		}
+		else {
+			String typeName = selectedItem.getParent().getValue();
+			SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
+			String fileName = selectedItem.getValue();
+			FileProperties fp = fileMap.get(fileName);
+			application.getPropertiesController().showPropertiesForFile(fp);
+		}
 	}
 	
 	private void handleDescribeButtonClicked(ActionEvent e) {
