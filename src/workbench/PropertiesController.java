@@ -133,7 +133,18 @@ public class PropertiesController {
 		
 		if (dmo != null) {
 			
-			String childXmlNamesCount = dmo.getChildXmlNames().length == 0 ? "No children" : String.format("%d children", dmo.getChildXmlNames().length);
+			String childXmlNamesCount;
+			switch (dmo.getChildXmlNames().length) {
+				case 0:
+					childXmlNamesCount = "No Children";
+					break;
+				case 1:
+					childXmlNamesCount = "1 Child";
+					break;
+				default:
+					childXmlNamesCount = String.format("%d Children", dmo.getChildXmlNames().length);
+					break;
+			}
 			TreeItem<MetadataProperty> childXmlNames = new TreeItem<>(new MetadataProperty("Child XML Names", childXmlNamesCount));
 			treeTableViewRoot.getChildren().add(childXmlNames);
 			for (String name : dmo.getChildXmlNames()) {
