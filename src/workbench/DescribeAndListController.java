@@ -12,6 +12,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ToolBar;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import javafx.scene.control.TreeView.EditEvent;
+import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 
@@ -22,6 +24,7 @@ import com.sforce.soap.metadata.DescribeMetadataResult;
 import com.sforce.soap.metadata.FileProperties;
 import com.sforce.soap.metadata.ListMetadataQuery;
 import com.sforce.soap.metadata.MetadataConnection;
+import com.sforce.soap.metadata.SaveResult;
 import com.sforce.ws.ConnectionException;
 
 public class DescribeAndListController {
@@ -206,6 +209,65 @@ public class DescribeAndListController {
 		}
 	}
 	
+	private static class RenameWorkerResults {
+		
+		private SOAPLogHandler logHandler;
+		private boolean success;
+		
+		public void setLogHandler(SOAPLogHandler logHandler) {
+			this.logHandler = logHandler;
+		}
+		public SOAPLogHandler getLogHandler() {
+			return logHandler;
+		}
+		
+		public void setSuccess(boolean success) {
+			this.success = success;
+		}
+		public boolean getSuccess() {
+			return success;
+		}
+	}
+	
+	private static class RenameWorker extends Task<RenameWorkerResults> {
+		
+		private MetadataConnection connection;
+		private String typeName;
+		private String oldFullName;
+		private String newFullName;
+		
+		public RenameWorker(MetadataConnection connection, String typeName, String oldFullName, String newFullName) {
+			this.connection = connection;
+			this.typeName = typeName;
+			this.oldFullName = oldFullName;
+			this.newFullName = newFullName;
+		}
+		
+		@Override
+		public RenameWorkerResults call() throws Exception {
+			
+			RenameWorkerResults workerResults = new RenameWorkerResults();
+			
+			try {
+				SOAPLogHandler logHandler = new SOAPLogHandler("RENAME");
+				connection.getConfig().addMessageHandler(logHandler);
+				workerResults.setLogHandler(logHandler);
+				
+				SaveResult mdapiRename = connection.renameMetadata(typeName, oldFullName, newFullName);
+				if (mdapiRename != null) {
+					workerResults.setSuccess(mdapiRename.getSuccess());
+				}
+				
+				connection.getConfig().clearMessageHandlers();
+			}
+			catch (ConnectionException e) {
+				e.printStackTrace();
+			}
+			
+			return workerResults;
+		}
+	}
+	
 	private Main application;
 	
 	private SortedMap<String, DescribeMetadataObject> metadataDescription;
@@ -267,7 +329,9 @@ public class DescribeAndListController {
 		toolBar.getItems().add(cancelButton);
 		
 		descriptionAndListsTree = new TreeView<>();
+		descriptionAndListsTree.setCellFactory(TextFieldTreeCell.forTreeView());
 		descriptionAndListsTree.setOnMouseClicked(e -> handleTreeItemClicked(e));
+		descriptionAndListsTree.setOnEditCommit(e -> handleTreeItemEdited(e));
 		AnchorPane.setTopAnchor(descriptionAndListsTree, 38.0);
 		AnchorPane.setBottomAnchor(descriptionAndListsTree, 0.0);
 		AnchorPane.setLeftAnchor(descriptionAndListsTree, 0.0);
@@ -307,6 +371,7 @@ public class DescribeAndListController {
 	}
 	
 	private void handleTreeItemClicked(MouseEvent e) {
+		setEditableForTreeSelection();
 		setDisablesForTreeSelection();
 		showPropertiesForTreeSelection();
 	}
@@ -346,6 +411,20 @@ public class DescribeAndListController {
 		}
 	}
 	
+	private void setEditableForTreeSelection() {
+		TreeItem<String> selectedItem = descriptionAndListsTree.getSelectionModel().getSelectedItem();
+		if (selectedItem == null) {
+			return;
+		}
+		if (selectedItem == descriptionAndListsTree.getRoot() ||
+		    selectedItem.getParent() == descriptionAndListsTree.getRoot()) {
+			descriptionAndListsTree.setEditable(false);
+		}
+		else {
+			descriptionAndListsTree.setEditable(true);
+		}
+	}
+	
 	private void setDisablesForOperationCompletion() {
 		cancelButton.setDisable(true);
 		descriptionAndListsTree.setDisable(false);
@@ -355,6 +434,8 @@ public class DescribeAndListController {
 	
 	private void setDisablesForOperationCancellation() {
 		cancelButton.setDisable(true);
+		// TODO:
+		// TODO:
 		// TODO:
 	}
 	
@@ -379,6 +460,59 @@ public class DescribeAndListController {
 			FileProperties fp = fileMap.get(fullName);
 			application.getPropertiesController().showPropertiesForFile(fp);
 		}
+	}
+	
+	private void handleTreeItemEdited(EditEvent<String> e) {
+		
+		descriptionAndListsTree.setDisable(true);
+		
+		TreeItem<String> editedItem = descriptionAndListsTree.getEditingItem();	
+		if (editedItem == descriptionAndListsTree.getRoot() ||
+			editedItem.getParent() == descriptionAndListsTree.getRoot()) {
+			return;
+		}
+		
+		String typeName = editedItem.getParent().getValue();
+		String oldFullName = e.getOldValue();
+		String newFullName = e.getNewValue();
+		
+		final RenameWorker renameWorker = new RenameWorker(application.metadataConnection().get(), typeName, oldFullName, newFullName);
+		renameWorker.setOnSucceeded(es -> {
+			
+			if (renameWorker.getValue().getSuccess()) {
+				application.getLogController().log(renameWorker.getValue().getLogHandler());
+				
+				SortedMap<String, FileProperties> list = metadataLists.get(typeName);
+				FileProperties fp = list.get(oldFullName);
+				list.remove(oldFullName);
+				
+				application.getEditorController().close(typeName, oldFullName);
+				
+				DescribeMetadataObject dmo = metadataDescription.get(typeName);
+				String directory = dmo.getDirectoryName();
+				String suffix = dmo.getSuffix();
+				fp.setFileName(directory + "/" + newFullName + "." + suffix);
+				fp.setFullName(newFullName);
+				list.put(newFullName, fp);
+				
+				application.getPropertiesController().showPropertiesForFile(fp);
+			}
+			else {
+				editedItem.setValue(oldFullName);
+			}
+			
+			setDisablesForOperationCompletion();
+		});
+		
+		cancelButton.setOnAction(ec -> {
+			renameWorker.cancel();
+			// TODO: Reset tree item to old fullName, or perhaps run a list to confirm status and then
+			// check to see if necessary to set tree item to old fullName.
+			handleCancelButtonClicked(ec);
+		});
+		cancelButton.setDisable(false);
+		
+		new Thread(renameWorker).start();
 	}
 	
 	private void handleDescribeButtonClicked(ActionEvent e) {
