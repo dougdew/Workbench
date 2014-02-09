@@ -92,7 +92,9 @@ public class LoginController {
 				eConfig.setServiceEndpoint(serverUrl + apiVersion);
 				eConfig.setManualLogin(true);
 				
-				SOAPLogHandler logHandler = new SOAPLogHandler("LOGIN");
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("LOGIN");
+				logHandler.setSummary(String.format("User Name: %s", userName));
 				eConfig.addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);
 				

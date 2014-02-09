@@ -65,7 +65,9 @@ public class DescribeAndListController {
 			DescribeWorkerResults workerResults = new DescribeWorkerResults();
 			
 			try {
-				SOAPLogHandler logHandler = new SOAPLogHandler("DESCRIBE");
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("DESCRIBE");
+				logHandler.setSummary(String.format("Api Version: %2.1f", apiVersion));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
 				
@@ -125,7 +127,9 @@ public class DescribeAndListController {
 			ListWorkerResults workerResults = new ListWorkerResults();
 			
 			try {
-				SOAPLogHandler logHandler = new SOAPLogHandler("LIST");
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("LIST");
+				logHandler.setSummary(String.format("Type: %s", typeName));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
 				
@@ -189,7 +193,9 @@ public class DescribeAndListController {
 			DeleteWorkerResults workerResults = new DeleteWorkerResults();
 			
 			try {
-				SOAPLogHandler logHandler = new SOAPLogHandler("DELETE");
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("DELETE");
+				logHandler.setSummary(String.format("Type: %s, Full Name: %s", typeName, fullName));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
 				
@@ -249,7 +255,9 @@ public class DescribeAndListController {
 			RenameWorkerResults workerResults = new RenameWorkerResults();
 			
 			try {
-				SOAPLogHandler logHandler = new SOAPLogHandler("RENAME");
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("RENAME");
+				logHandler.setSummary(String.format("Type: %s, Old Full Name: %s, New Full Name: %s", typeName, oldFullName, newFullName));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
 				

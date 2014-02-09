@@ -5,6 +5,7 @@ import java.util.Calendar;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
@@ -19,37 +20,20 @@ public class PropertiesController {
 	
 	public static class MetadataProperty {
 		
+		private StringProperty name = new SimpleStringProperty(this, "name");
+		private StringProperty value = new SimpleStringProperty(this, "value");
+		
 		public MetadataProperty(String n, String v) {
-			setName(n);
-			setValue(v);
+			name.set(n);
+			value.set(v);
 		}
 		
-		private StringProperty name;
 		public StringProperty nameProperty() {
-			if (name == null) {
-				name = new SimpleStringProperty(this, "name");
-			}
 			return name;
 		}
-		public String getName() {
-			return nameProperty().get();
-		}
-		public void setName(String n) {
-			nameProperty().set(n);
-		}
-		
-		private StringProperty value;
+	
 		public StringProperty valueProperty() {
-			if (value == null) {
-				value = new SimpleStringProperty(this, "value");
-			}
 			return value;
-		}
-		public String getValue() {
-			return valueProperty().get();
-		}
-		public void setValue(String v) {
-			valueProperty().set(v);
 		}
 	}
 
@@ -228,6 +212,7 @@ public class PropertiesController {
 		
 		treeTableView = new TreeTableView<>();
 		treeTableView.setShowRoot(false);
+		treeTableView.setPlaceholder(new Label(""));
 		AnchorPane.setTopAnchor(treeTableView, 0.0);
 		AnchorPane.setBottomAnchor(treeTableView, 0.0);
 		AnchorPane.setLeftAnchor(treeTableView, 0.0);

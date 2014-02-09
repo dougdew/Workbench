@@ -10,22 +10,35 @@ public class SOAPLogHandler implements LogMessage, MessageHandler {
 	
 	String title;
 	String url;
-	String message;
-	
-	public SOAPLogHandler(String title) {
-		this.title = title;
-	}
+	String summary;
+	String details;
 	
 	public String getTitle() {
 		return title;
+	}
+	public void setTitle(String title) {
+		this.title = title;
 	}
 	
 	public String getUrl() {
 		return url;
 	}
+	public void setUrl(String url) {
+		this.url = url;
+	}
 	
-	public String getMessage() {
-		return message;
+	public String getSummary() {
+		return summary;
+	}
+	public void setSummary(String summary) {
+		this.summary = summary;
+	}
+	
+	public String getDetails() {
+		return details;
+	}
+	public void setDetails(String details) {
+		this.details = details;
 	}
 
 	public void handleRequest(URL endpoint, byte[] request) {
@@ -34,6 +47,6 @@ public class SOAPLogHandler implements LogMessage, MessageHandler {
 
 	public void handleResponse(URL endpoint, byte[] response) {
 		url = endpoint.toString();
-		message = new String(response);
+		details = new String(response);
 	}
 }

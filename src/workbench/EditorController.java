@@ -89,7 +89,9 @@ public class EditorController {
 				Metadata metadata = (Metadata)mapper.readObject(xin, typeInfo, Metadata.class);
 				results.setMetadata(metadata);
 				
-				SOAPLogHandler logHandler = new SOAPLogHandler("CREATE: ");
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("CREATE");
+				logHandler.setSummary(String.format("Type: %s, Full Name: %s", metadata.getClass().getSimpleName(), metadata.getFullName()));
 				connection.getConfig().addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);
 				
@@ -147,7 +149,9 @@ public class EditorController {
 			ReadWorkerResults results = new ReadWorkerResults();
 			
 			try {
-				SOAPLogHandler logHandler = new SOAPLogHandler("READ: " + fullName);
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("READ");
+				logHandler.setSummary(String.format("Type: %s, Full Name: %s", type, fullName));
 				connection.getConfig().addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);
 				
@@ -201,7 +205,9 @@ public class EditorController {
 			UpdateWorkerResults results = new UpdateWorkerResults();
 			
 			try {
-				SOAPLogHandler logHandler = new SOAPLogHandler("UPDATE: " + metadata.getFullName());
+				SOAPLogHandler logHandler = new SOAPLogHandler();
+				logHandler.setTitle("UPDATE");
+				logHandler.setSummary(String.format("Type: %s, Full Name: %s", metadata.getClass().getSimpleName(), metadata.getFullName()));
 				connection.getConfig().addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);
 				
