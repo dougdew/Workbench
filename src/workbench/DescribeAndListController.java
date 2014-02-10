@@ -477,6 +477,7 @@ public class DescribeAndListController {
 		TreeItem<String> editedItem = descriptionAndListsTree.getEditingItem();	
 		if (editedItem == descriptionAndListsTree.getRoot() ||
 			editedItem.getParent() == descriptionAndListsTree.getRoot()) {
+			// Should never get here.
 			return;
 		}
 		
@@ -598,7 +599,6 @@ public class DescribeAndListController {
 		}
 		
 		String typeName = selectedItem.getParent().getValue();
-		SortedMap<String, FileProperties> fileMap = metadataLists.get(typeName);
 		String fullName = selectedItem.getValue();
 		
 		application.getEditorController().edit(typeName, fullName);
@@ -633,6 +633,7 @@ public class DescribeAndListController {
 				deleteButton.setDisable(false);
 				readButton.setDisable(false);
 			}
+			application.getLogController().log(deleteWorker.getValue().getLogHandler());
 			
 			setDisablesForOperationCompletion();
 		});

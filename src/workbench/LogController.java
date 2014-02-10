@@ -113,12 +113,14 @@ public class LogController {
 		root.getChildren().add(treeTableView);
 		
 		operationColumn = new TreeTableColumn<>("Operation");
-		operationColumn.setPrefWidth(150.);
+		operationColumn.setSortable(false);
+		operationColumn.setPrefWidth(150.0);
 		operationColumn.setCellValueFactory(new TreeItemPropertyValueFactory<LogRow, String>("operation"));
 		treeTableView.getColumns().add(operationColumn);
 		
 		descriptionColumn = new TreeTableColumn<>("Description");
-		descriptionColumn.setPrefWidth(600);
+		descriptionColumn.setSortable(false);
+		descriptionColumn.setPrefWidth(600.0);
 		descriptionColumn.setCellValueFactory(new TreeItemPropertyValueFactory<LogRow, String>("description"));
 		treeTableView.getColumns().add(descriptionColumn);
 		
