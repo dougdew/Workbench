@@ -90,7 +90,7 @@ public class EditorController {
 				results.setMetadata(metadata);
 				
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("CREATE");
+				logHandler.setTitle("Create");
 				logHandler.setSummary(String.format("Type: %s, Full Name: %s", metadata.getClass().getSimpleName(), metadata.getFullName()));
 				connection.getConfig().addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);
@@ -150,7 +150,7 @@ public class EditorController {
 			
 			try {
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("READ");
+				logHandler.setTitle("Read");
 				logHandler.setSummary(String.format("Type: %s, Full Name: %s", type, fullName));
 				connection.getConfig().addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);
@@ -206,7 +206,7 @@ public class EditorController {
 			
 			try {
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("UPDATE");
+				logHandler.setTitle("Update");
 				logHandler.setSummary(String.format("Type: %s, Full Name: %s", metadata.getClass().getSimpleName(), metadata.getFullName()));
 				connection.getConfig().addMessageHandler(logHandler);
 				results.setLogHandler(logHandler);

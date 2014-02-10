@@ -66,7 +66,7 @@ public class DescribeAndListController {
 			
 			try {
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("DESCRIBE");
+				logHandler.setTitle("Describe");
 				logHandler.setSummary(String.format("Api Version: %2.1f", apiVersion));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
@@ -128,7 +128,7 @@ public class DescribeAndListController {
 			
 			try {
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("LIST");
+				logHandler.setTitle("List");
 				logHandler.setSummary(String.format("Type: %s", typeName));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
@@ -194,7 +194,7 @@ public class DescribeAndListController {
 			
 			try {
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("DELETE");
+				logHandler.setTitle("Delete");
 				logHandler.setSummary(String.format("Type: %s, Full Name: %s", typeName, fullName));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);
@@ -256,7 +256,7 @@ public class DescribeAndListController {
 			
 			try {
 				SOAPLogHandler logHandler = new SOAPLogHandler();
-				logHandler.setTitle("RENAME");
+				logHandler.setTitle("Rename");
 				logHandler.setSummary(String.format("Type: %s, Old Full Name: %s, New Full Name: %s", typeName, oldFullName, newFullName));
 				connection.getConfig().addMessageHandler(logHandler);
 				workerResults.setLogHandler(logHandler);

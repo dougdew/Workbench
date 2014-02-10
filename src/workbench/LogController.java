@@ -35,20 +35,20 @@ public class LogController {
 	}
 	
 	public static class LogRow {
-		private StringProperty name = new SimpleStringProperty(this, "name");
-		private StringProperty value = new SimpleStringProperty(this, "value");
+		private StringProperty operation = new SimpleStringProperty(this, "operation");
+		private StringProperty description = new SimpleStringProperty(this, "description");
 		
-		public LogRow(String name, String value) {
-			this.name.set(name);
-			this.value.set(value);
+		public LogRow(String operation, String value) {
+			this.operation.set(operation);
+			this.description.set(value);
 		}
 		
-		public StringProperty nameProperty() {
-			return name;
+		public StringProperty operationProperty() {
+			return operation;
 		}
 		
-		public StringProperty valueProperty() {
-			return value;
+		public StringProperty descriptionProperty() {
+			return description;
 		}
 	}
 	
@@ -59,8 +59,8 @@ public class LogController {
 	private Button clearButton;
 	private TreeTableView<LogRow> treeTableView;
 	TreeItem<LogRow> treeTableViewRoot;
-	private TreeTableColumn<LogRow, String> nameColumn;
-	private TreeTableColumn<LogRow, String> valueColumn;
+	private TreeTableColumn<LogRow, String> operationColumn;
+	private TreeTableColumn<LogRow, String> descriptionColumn;
 	
 	public LogController(Main application) {
 		this.application = application;
@@ -112,15 +112,15 @@ public class LogController {
 		AnchorPane.setRightAnchor(treeTableView, 0.0);
 		root.getChildren().add(treeTableView);
 		
-		nameColumn = new TreeTableColumn<>("Name");
-		nameColumn.setPrefWidth(150.);
-		nameColumn.setCellValueFactory(new TreeItemPropertyValueFactory<LogRow, String>("name"));
-		treeTableView.getColumns().add(nameColumn);
+		operationColumn = new TreeTableColumn<>("Operation");
+		operationColumn.setPrefWidth(150.);
+		operationColumn.setCellValueFactory(new TreeItemPropertyValueFactory<LogRow, String>("operation"));
+		treeTableView.getColumns().add(operationColumn);
 		
-		valueColumn = new TreeTableColumn<>("Value");
-		valueColumn.setPrefWidth(600);
-		valueColumn.setCellValueFactory(new TreeItemPropertyValueFactory<LogRow, String>("value"));
-		treeTableView.getColumns().add(valueColumn);
+		descriptionColumn = new TreeTableColumn<>("Description");
+		descriptionColumn.setPrefWidth(600);
+		descriptionColumn.setCellValueFactory(new TreeItemPropertyValueFactory<LogRow, String>("description"));
+		treeTableView.getColumns().add(descriptionColumn);
 		
 		treeTableViewRoot = new TreeItem<>(new LogRow("ROOT", "ROOT"));
 		treeTableView.setRoot(treeTableViewRoot);
